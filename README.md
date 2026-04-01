@@ -48,7 +48,7 @@ The project follows a modern, decoupled architecture:
 
 ```bash
 # Clone the repository
-git clone [https://github.com/your-username/DevInterviewer.git](https://github.com/your-username/DevInterviewer.git)
+git clone [https://github.com/OmarAdel898/DevInterviewer.git](https://github.com/OmarAdel898/DevInterviewer.git)
 
 # Setup Backend
 cd backend
