@@ -1,0 +1,183 @@
+<!-- <div class="min-h-screen bg-base-200 text-base-content">
+	<div class="mx-auto flex min-h-screen max-w-450 flex-col p-3 md:p-4">
+		<header class="mb-3 rounded-box border border-base-300/80 bg-base-100/95 p-3 shadow-sm backdrop-blur md:p-4">
+			<div class="grid grid-cols-1 gap-3 xl:grid-cols-[1.4fr_1fr_auto] xl:items-center">
+				<div class="flex min-w-0 items-center gap-3">
+					<div class="avatar placeholder">
+						<div class="h-12 w-12 rounded-xl bg-neutral text-neutral-content">
+							<span class="text-sm font-semibold tracking-wider">DX</span>
+						</div>
+					</div>
+
+					<div class="min-w-0">
+						<h1 class="truncate text-lg font-semibold md:text-xl">{{ interviewTitle() }}</h1>
+						<p class="truncate text-sm text-base-content/70">
+							Candidate: {{ candidateName() }}
+						</p>
+					</div>
+				</div>
+
+				<label class="form-control w-full">
+					<div class="label py-1">
+						<span class="label-text text-xs font-semibold uppercase tracking-wider text-base-content/60">
+							Language
+						</span>
+					</div>
+
+					<select
+						class="select select-bordered w-full"
+						[value]="selectedLanguage()"
+						(change)="onLanguageChange($any($event.target).value)"
+					>
+						@for (language of languageOptions; track language.value) {
+							<option [value]="language.value">{{ language.label }}</option>
+						}
+					</select>
+				</label>
+
+				<div class="flex items-center justify-end gap-2">
+					<button class="btn btn-success gap-2" (click)="onRunCode()">
+						<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+							<path d="M8 5.14v14l11-7-11-7Z" />
+						</svg>
+						Run Code
+					</button>
+
+					<button class="btn btn-error btn-outline gap-2" (click)="onEndInterview()">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="h-4 w-4"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+						>
+							<path d="M12 2v10" />
+							<path d="M5.2 5.2a9 9 0 1 0 13.6 0" />
+						</svg>
+						End Interview
+					</button>
+				</div>
+			</div>
+
+			<div class="mt-2 text-xs text-base-content/60">
+				Room: <span class="font-mono">{{ interviewId() || 'pending...' }}</span>
+				<span class="mx-1">|</span>
+				Interviewer: <span class="font-medium">{{ interviewerName() }}</span>
+			</div>
+		</header>
+
+		<main class="grid min-h-0 flex-1 gap-3 lg:grid-cols-[2fr_1fr]">
+			<section class="min-h-115 min-w-0 overflow-hidden rounded-box border border-base-300 bg-neutral shadow-lg">
+				<div class="mockup-window h-full border border-neutral-content/20 bg-neutral">
+					<div class="editor-shell h-full bg-slate-900">
+						<div class="flex items-center justify-between border-b border-white/10 px-4 py-2 text-xs text-slate-300">
+							<span class="font-medium">live-session.{{ editorFileExtension() }}</span>
+							<span class="badge badge-success badge-outline badge-sm">Synced</span>
+						</div>
+
+						<div class="grid h-[calc(100%-41px)] min-h-0 grid-cols-[3.4rem_1fr]">
+							<div class="overflow-hidden border-r border-white/10 bg-slate-950/70 px-2 py-3 text-right text-xs text-slate-500">
+								@for (line of lineNumbers(); track line) {
+									<div class="line-number leading-6">{{ line }}</div>
+								}
+							</div>
+
+							<textarea
+								class="editor-input h-full w-full resize-none border-0 bg-slate-900 p-3 text-sm leading-6 text-slate-100 outline-none"
+								[value]="code()"
+								(input)="onCodeChange($any($event.target).value)"
+								spellcheck="false"
+								autocomplete="off"
+								autocorrect="off"
+								autocapitalize="off"
+							></textarea>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<aside class="flex min-h-115 min-w-0 flex-col gap-3">
+				<section class="card border border-base-300 bg-base-100 shadow-sm">
+					<div class="card-body p-4">
+						<h2 class="card-title text-base">Participants</h2>
+
+						<ul class="space-y-3">
+							@for (participant of participants(); track participant.id) {
+								<li class="flex items-center justify-between rounded-lg bg-base-200/70 px-3 py-2">
+									<div class="flex items-center gap-3">
+										<div class="avatar placeholder">
+											<div class="h-10 w-10 rounded-full {{ participant.avatarClass }}">
+												<span class="text-xs font-semibold">{{ participant.name.charAt(0) }}</span>
+											</div>
+										</div>
+
+										<div>
+											<p class="text-sm font-medium leading-tight">{{ participant.name }}</p>
+											<p class="text-xs text-base-content/60">{{ participant.role }}</p>
+										</div>
+									</div>
+
+									<span
+										class="badge"
+										[class.badge-warning]="participant.status === 'Typing...'"
+										[class.badge-ghost]="participant.status === 'Idle'"
+									>
+										{{ participant.status }}
+									</span>
+								</li>
+							}
+						</ul>
+					</div>
+				</section>
+
+				<section class="card flex min-h-0 flex-1 border border-base-300 bg-base-100 shadow-sm">
+					<div class="card-body flex min-h-0 flex-1 p-4">
+						<div class="mb-3 flex items-center justify-between">
+							<h2 class="card-title text-base">Console Output</h2>
+							<button class="btn btn-xs btn-outline" (click)="onClearConsole()">Clear</button>
+						</div>
+
+						<div class="console-shell min-h-0 flex-1 overflow-auto rounded-lg bg-slate-950 p-3 font-mono text-sm text-slate-100">
+							@if (consoleOutput()) {
+								<pre class="whitespace-pre-wrap">{{ consoleOutput() }}</pre>
+							} @else {
+								<p class="text-slate-400">No output yet. Click "Run Code" to execute.</p>
+							}
+						</div>
+					</div>
+				</section>
+			</aside>
+		</main>
+	</div>
+</div> -->
+
+<h1>Interview Room</h1>
+<h1>{{code()}}</h1>
+<textarea
+class="editor-input h-full w-full resize-none border-0 bg-slate-900 p-3 text-sm leading-6 text-slate-100 outline-none"
+[value]="code()"
+(input)="onCodeUpdate($any($event.target).value)"
+spellcheck="false"
+autocomplete="off"
+autocorrect="off"
+autocapitalize="off"
+></textarea>
+<button (click)="onSave()">Save Code</button>
+<button class="btn btn-primary" (click)="run()">Run Code</button>
+<section class="card flex min-h-0 flex-1 border border-base-300 bg-base-100 shadow-sm">
+					<div class="card-body flex min-h-0 flex-1 p-4">
+						<div class="mb-3 flex items-center justify-between">
+							<h2 class="card-title text-base">Console Output</h2>
+							<button class="btn btn-xs btn-outline" >Clear</button>
+						</div>
+
+						<div class="console-shell min-h-0 flex-1 overflow-auto rounded-lg bg-slate-950 p-3 font-mono text-sm text-slate-100">
+							@if (output()) {
+								<pre class="whitespace-pre-wrap">{{ output() }}</pre>
+							} @else {
+								<p class="text-slate-400">No output yet. Click "Run Code" to execute.</p>
+							}
+						</div>
+					</div>
+				</section>

@@ -1,0 +1,132 @@
+<div class="min-h-screen bg-base-200 px-4 py-8 font-sans md:px-8 md:py-12">
+	<div class="mx-auto flex w-full max-w-7xl flex-col gap-8">
+		<section class="rounded-3xl border border-base-300 bg-base-100 p-8 shadow-xl md:p-12">
+			<div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+				<div class="space-y-3">
+					<span class="badge badge-outline border-base-300 text-primary">My Interviews</span>
+					<h1 class="text-3xl font-semibold text-base-content md:text-4xl">
+						Your assigned interview sessions
+					</h1>
+					<p class="max-w-2xl text-base-content/70">
+						Review owner details, schedule, and interview focus before entering the live room.
+					</p>
+				</div>
+
+				<button
+					type="button"
+					class="btn btn-outline border-base-300 transition-all duration-300 hover:shadow-sm"
+					(click)="loadInterviews()"
+					[disabled]="isLoading"
+				>
+					@if (isLoading) {
+						<span class="loading loading-spinner loading-xs"></span>
+					}
+					Refresh list
+				</button>
+			</div>
+		</section>
+
+		<section class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+			<article class="rounded-2xl border border-base-300 bg-base-100 p-6 shadow-sm">
+				<p class="text-sm uppercase tracking-wide text-base-content/70">Assigned interviews</p>
+				<h2 class="mt-3 text-4xl font-semibold text-primary">{{ assignedCount }}</h2>
+			</article>
+
+			<article class="rounded-2xl border border-base-300 bg-base-100 p-6 shadow-sm">
+				<p class="text-sm uppercase tracking-wide text-base-content/70">Upcoming sessions</p>
+				<h2 class="mt-3 text-4xl font-semibold text-primary">{{ upcomingCount }}</h2>
+			</article>
+
+			<article class="rounded-2xl border border-base-300 bg-base-100 p-6 shadow-sm sm:col-span-2 xl:col-span-1">
+				<p class="text-sm uppercase tracking-wide text-base-content/70">Completed sessions</p>
+				<h2 class="mt-3 text-4xl font-semibold text-primary">{{ completedCount }}</h2>
+			</article>
+		</section>
+
+		<section class="rounded-3xl border border-base-300 bg-base-100 p-8 shadow-xl">
+			<div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+				<h2 class="text-xl font-semibold text-base-content">Assigned Interview Rooms</h2>
+				<span class="badge badge-outline border-base-300">{{ interviews.length }} total</span>
+			</div>
+
+			@if (isLoading) {
+				<div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+					@for (item of skeletonCards; track item) {
+						<article class="rounded-2xl border border-base-300 bg-base-200/70 p-6">
+							<div class="skeleton mb-4 h-4 w-28"></div>
+							<div class="skeleton mb-3 h-6 w-3/4"></div>
+							<div class="skeleton mb-6 h-4 w-full"></div>
+							<div class="skeleton mb-3 h-4 w-2/3"></div>
+							<div class="skeleton h-10 w-full"></div>
+						</article>
+					}
+				</div>
+			} @else if (errorMessage) {
+				<div class="alert alert-error">
+					<span>{{ errorMessage }}</span>
+				</div>
+			} @else if (interviews.length === 0) {
+				<article class="rounded-2xl border border-dashed border-base-300 bg-base-200/30 p-10 text-center">
+					<h3 class="text-lg font-semibold text-base-content">No interviews assigned yet</h3>
+					<p class="mt-2 text-sm text-base-content/70">
+						When an interviewer assigns you a room, it will appear here with a Join Room action.
+					</p>
+				</article>
+			} @else {
+				<div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+					@for (interview of interviews; track getInterviewId(interview)) {
+						<article
+							class="home-card group rounded-2xl border border-base-300 bg-base-100 p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+						>
+							<div class="mb-5 flex items-center justify-between gap-2">
+								<span class="badge badge-primary badge-outline uppercase">{{ interview.language }}</span>
+								<span class="badge" [ngClass]="statusBadgeClass(interview.status)">
+									{{ interview.status }}
+								</span>
+							</div>
+
+							<h3 class="text-lg font-semibold text-base-content">{{ interview.title }}</h3>
+							<p class="mt-2 line-clamp-2 text-sm text-base-content/70">{{ interview.focus }}</p>
+
+							<div class="mt-5 space-y-2 rounded-xl bg-base-200/70 p-4 text-sm">
+								<p class="flex items-center justify-between gap-3">
+									<span class="text-base-content/70">Owner</span>
+									<span class="text-right font-medium text-base-content">{{ getOwnerName(interview) }}</span>
+								</p>
+
+								@if (getOwnerEmail(interview); as ownerEmail) {
+									<p class="flex items-center justify-between gap-3">
+										<span class="text-base-content/70">Owner email</span>
+										<span class="text-right font-mono text-xs text-primary">{{ ownerEmail }}</span>
+									</p>
+								}
+
+								<p class="flex items-center justify-between gap-3">
+									<span class="text-base-content/70">Candidate</span>
+									<span class="text-right font-medium text-base-content">{{ interview.candidateName }}</span>
+								</p>
+
+								<p class="flex items-center justify-between gap-3">
+									<span class="text-base-content/70">Scheduled</span>
+									<span class="text-right font-mono text-xs text-primary">{{ interview.time | date:'EEE, MMM d, y - h:mm a' }}</span>
+								</p>
+							</div>
+
+							<div class="mt-5 flex items-center justify-between gap-3">
+								<span class="font-mono text-xs text-base-content/60">ID: {{ getInterviewId(interview) || 'N/A' }}</span>
+								<button
+									type="button"
+									class="btn btn-primary btn-sm transition-all duration-300 hover:shadow-xl"
+									[disabled]="!getInterviewId(interview)"
+									(click)="joinRoom(interview)"
+								>
+									Join room
+								</button>
+							</div>
+						</article>
+					}
+				</div>
+			}
+		</section>
+	</div>
+</div>

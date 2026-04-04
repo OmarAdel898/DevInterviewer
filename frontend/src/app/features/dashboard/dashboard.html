@@ -1,0 +1,272 @@
+<div class="min-h-screen bg-base-200 px-4 py-8 font-sans md:px-8 md:py-12">
+  <div class="mx-auto flex w-full max-w-7xl flex-col gap-8">
+    <section class="rounded-3xl border border-base-300 bg-base-100 p-8 shadow-xl md:p-12">
+      <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+        <div class="space-y-3">
+          <span class="badge badge-outline border-base-300 text-primary">Dashboard</span>
+          <h1 class="text-3xl font-semibold text-base-content md:text-4xl">
+            Welcome back, {{ userFirstName() }}.
+          </h1>
+          <p class="max-w-2xl text-base-content/70">
+            Manage live interview rooms, monitor panel readiness, and keep candidate loops moving.
+          </p>
+        </div>
+
+        <div class="flex flex-wrap gap-3">
+          <button
+            type="button"
+            class="btn btn-primary transition-all duration-300 hover:shadow-xl"
+            (click)="openLaunchRoomModal()"
+          >
+            Launch room
+          </button>
+          <button
+            type="button"
+            class="btn btn-outline border-base-300 transition-all duration-300 hover:shadow-sm"
+          >
+            Share scorecard
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid gap-4 md:grid-cols-3">
+      @for (stat of stats; track stat.label) {
+        <article class="rounded-2xl border border-base-300 bg-base-100 p-6 shadow-sm">
+          <p class="text-sm uppercase tracking-wide text-base-content/70">{{ stat.label }}</p>
+          <h2 class="mt-3 text-4xl font-semibold text-primary">{{ stat.value }}</h2>
+        </article>
+      }
+    </section>
+
+    <section class="rounded-3xl border border-base-300 bg-base-100 p-8 shadow-xl">
+      <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <h2 class="text-xl font-semibold text-base-content">Interview Sessions</h2>
+        <span class="badge badge-outline border-base-300">{{ sessions().length }} scheduled</span>
+      </div>
+
+      @if (isLoading()) {
+        <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          @for (item of skeletonCards; track item) {
+            <article class="rounded-2xl border border-base-300 bg-base-200/70 p-6">
+              <div class="skeleton mb-4 h-4 w-28"></div>
+              <div class="skeleton mb-3 h-6 w-3/4"></div>
+              <div class="skeleton mb-6 h-4 w-full"></div>
+              <div class="flex items-center justify-between">
+                <div class="skeleton h-6 w-20"></div>
+                <div class="skeleton h-8 w-16"></div>
+              </div>
+            </article>
+          }
+        </div>
+      } @else {
+        
+        <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          @for (session of sessions(); track session._id || session.id) {
+            <article
+              class="group rounded-2xl border border-base-300 bg-base-100 p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
+            >
+              <div class="mb-5 flex items-center justify-between gap-2">
+                <span class="badge badge-primary badge-outline">{{ session.language }}</span>
+                <span class="font-mono text-xs text-primary">{{ session.time | date:'short' }}</span>
+              </div>
+
+              <h3 class="text-lg font-semibold text-base-content">{{ session.candidateName }}</h3>
+              <p class="mt-2 text-sm text-base-content/70">{{ session.title }}</p>
+
+              <div class="mt-6 flex items-center justify-between">
+                <span class="badge badge-outline border-base-300">{{ session.status }}</span>
+                <button
+                  type="button"
+                  class="btn btn-primary btn-sm transition-all duration-300 hover:shadow-xl"
+                  (click)="joinRoom(session._id)"
+                >
+                  Open
+                </button>
+              </div>
+            </article>
+          }
+        </div>
+      }
+    </section>
+
+    <section
+      class="flex flex-col items-start justify-between gap-4 rounded-2xl border border-base-300 bg-base-100 p-6 shadow-sm md:flex-row md:items-center"
+    >
+      <div>
+        <p class="text-base font-medium text-base-content">System status: Stable</p>
+        <p class="font-mono text-xs text-primary">latency=42ms • recorder=healthy</p>
+      </div>
+      <button
+        type="button"
+        class="btn btn-outline border-base-300 transition-all duration-300 hover:shadow-sm"
+        (click)="logout()"
+      >
+        Logout
+      </button>
+    </section>
+  </div>
+</div>
+
+<dialog #launchRoomModal id="launch_room_modal" class="modal">
+  <div class="modal-box w-11/12 max-w-2xl rounded-3xl border border-base-300">
+    <h3 class="text-xl font-semibold">Launch Interview Room</h3>
+    <p class="mt-1 text-sm text-base-content/70">
+      Assign a candidate by email, confirm candidate details, and create a room in one flow.
+    </p>
+
+    <div class="mt-6 grid gap-4 md:grid-cols-2">
+      <label class="form-control w-full">
+        <span class="label-text mb-2 text-sm font-medium">Interview title</span>
+        <input
+          type="text"
+          class="input input-bordered w-full"
+          [value]="launchRoomForm().title"
+          (input)="updateLaunchRoomField('title', $event)"
+          placeholder="Frontend Pairing"
+        />
+      </label>
+
+      <label class="form-control w-full">
+        <span class="label-text mb-2 text-sm font-medium">Language</span>
+        <select
+          class="select select-bordered w-full"
+          [value]="launchRoomForm().language"
+          (change)="updateLaunchRoomField('language', $event)"
+        >
+          @for (language of supportedLanguages; track language.value) {
+            <option [value]="language.value">{{ language.label }}</option>
+          }
+        </select>
+      </label>
+
+      <label class="form-control w-full md:col-span-2">
+        <span class="label-text mb-2 text-sm font-medium">Focus area</span>
+        <input
+          type="text"
+          class="input input-bordered w-full"
+          [value]="launchRoomForm().focus"
+          (input)="updateLaunchRoomField('focus', $event)"
+          placeholder="System design and APIs"
+        />
+      </label>
+
+      <label class="form-control w-full md:col-span-2">
+        <span class="label-text mb-2 text-sm font-medium">Scheduled time</span>
+        <input
+          type="datetime-local"
+          class="input input-bordered w-full"
+          [value]="launchRoomForm().time"
+          (input)="updateLaunchRoomField('time', $event)"
+        />
+      </label>
+    </div>
+
+    <div class="divider my-6">Candidate assignment</div>
+
+    <label class="form-control w-full">
+      <span class="label-text mb-2 text-sm font-medium">Candidate email</span>
+      <div class="join w-full">
+        <input
+          type="email"
+          class="input input-bordered join-item w-full"
+          [value]="launchRoomForm().candidateEmail"
+          [disabled]="isCandidateEmailLocked()"
+          (input)="updateLaunchRoomField('candidateEmail', $event)"
+          placeholder="candidate@email.com"
+        />
+
+        @if (isCandidateEmailLocked()) {
+          <button
+            type="button"
+            class="btn btn-outline join-item"
+            (click)="unlockCandidateEmail()"
+            title="Change candidate email"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+            </svg>
+          </button>
+        } @else {
+          <button
+            type="button"
+            class="btn btn-primary join-item"
+            (click)="lookupCandidateByEmail()"
+            [disabled]="isCandidateLookupLoading()"
+          >
+            @if (isCandidateLookupLoading()) {
+              <span class="loading loading-spinner loading-xs"></span>
+            }
+            Find user
+          </button>
+        }
+      </div>
+    </label>
+
+    @if (isCandidateLookupLoading()) {
+      <p class="mt-2 text-sm text-base-content/70">Checking email and loading user...</p>
+    }
+
+    @if (candidateLookupError()) {
+      <div class="alert alert-error mt-3 py-2 text-sm">{{ candidateLookupError() }}</div>
+    }
+
+    @if (candidateLookupSuccess()) {
+      <div class="alert alert-success mt-3 py-2 text-sm">{{ candidateLookupSuccess() }}</div>
+    }
+
+    <label class="form-control mt-4 w-full">
+      <span class="label-text mb-2 text-sm font-medium">Candidate name</span>
+      <input
+        type="text"
+        class="input input-bordered w-full"
+        [value]="selectedCandidate()?.fullName ?? ''"
+        disabled
+        placeholder="Name appears only when email belongs to role user"
+      />
+    </label>
+
+    @if (createInterviewError()) {
+      <div class="alert alert-error mt-4 py-2 text-sm">{{ createInterviewError() }}</div>
+    }
+
+    @if (createdRoomId()) {
+      <div class="mt-4 rounded-2xl border border-success/30 bg-success/10 p-4">
+        <p class="text-sm font-medium text-success">Room created successfully</p>
+        <div class="mt-2 flex flex-wrap items-center gap-2">
+          <span class="badge badge-outline border-success/50 font-mono">{{ createdRoomId() }}</span>
+          <button type="button" class="btn btn-sm btn-outline" (click)="copyRoomId()">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16h8a2 2 0 002-2V6a2 2 0 00-2-2H8a2 2 0 00-2 2v8a2 2 0 002 2zm0 0H6a2 2 0 01-2-2V8a2 2 0 012-2h2" />
+            </svg>
+            Copy ID
+          </button>
+          @if (hasCopiedRoomId()) {
+            <span class="text-xs text-success">Copied</span>
+          }
+        </div>
+      </div>
+    }
+
+    <div class="modal-action mt-6">
+      <button
+        type="button"
+        class="btn btn-primary"
+        (click)="createRoom()"
+        [disabled]="isCreatingInterview() || isCandidateLookupLoading()"
+      >
+        @if (isCreatingInterview()) {
+          <span class="loading loading-spinner loading-xs"></span>
+        }
+        Create room
+      </button>
+      <form method="dialog">
+        <button type="submit" class="btn btn-ghost" (click)="closeLaunchRoomModal()">Close</button>
+      </form>
+    </div>
+  </div>
+
+  <form method="dialog" class="modal-backdrop">
+    <button type="submit" (click)="closeLaunchRoomModal()">close</button>
+  </form>
+</dialog>

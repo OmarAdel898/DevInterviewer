@@ -1,0 +1,95 @@
+<div class="hero min-h-screen bg-base-200 px-4 py-12 font-sans md:px-8">
+  <div class="hero-content w-full max-w-6xl flex-col gap-10 lg:flex-row-reverse lg:items-start lg:justify-between">
+    <section class="w-full max-w-xl space-y-6">
+      <span class="badge badge-outline border-base-300 px-4 py-3 text-primary">DevInterviewer</span>
+      <h1 class="text-4xl font-semibold leading-tight text-base-content md:text-5xl">
+        Build your interview command center.
+      </h1>
+      <p class="text-base-content/70">
+        Create your workspace to run structured coding sessions and collaborate with your hiring panel.
+      </p>
+      <p class="font-mono text-sm text-primary">devinterviewer init --workspace hiring-team</p>
+    </section>
+
+    <section class="w-full max-w-md rounded-3xl border border-base-300 bg-base-100 p-10 shadow-2xl">
+      <div class="mb-6 space-y-2">
+        <h2 class="text-2xl font-semibold text-base-content">Create account</h2>
+        <p class="text-sm text-base-content/70">Set up your interviewer profile in under a minute.</p>
+      </div>
+
+      @if (errorMessage()) {
+        <div class="alert alert-error mb-4 shadow-sm">
+          <span>{{ errorMessage() }}</span>
+        </div>
+      }
+
+      <form class="space-y-5" [formGroup]="registerForm" (ngSubmit)="onRegister()">
+        <label class="form-control w-full gap-2">
+          <span class="label-text text-base-content">Full name</span>
+          <input
+            type="text"
+            formControlName="fullName"
+            placeholder="Amina Youssef"
+            autocomplete="name"
+            class="input input-bordered focus:input-primary w-full"
+          />
+        </label>
+
+        <label class="form-control w-full gap-2">
+          <span class="label-text text-base-content">Email</span>
+          <input
+            type="email"
+            formControlName="email"
+            placeholder="you@company.com"
+            autocomplete="email"
+            class="input input-bordered focus:input-primary w-full"
+          />
+        </label>
+
+        <div class="my-1 w-full">
+            <label class="form-control w-full">
+              <span class="label-text text-base-content">Role</span>
+              <select formControlName="role" class="select select-bordered focus:select-primary w-full">
+                <option value="" disabled selected>Select role</option>
+                <option value="interviewer">Interviewer</option>
+                <option value="user">User</option>
+              </select>
+            </label>
+          </div>
+
+        <div class="grid gap-5 md:grid-cols-2">
+          <label class="form-control w-full gap-2">
+            <span class="label-text text-base-content">Password</span>
+            <input
+              type="password"
+              formControlName="password"
+              placeholder="At least 6 characters"
+              autocomplete="new-password"
+              class="input input-bordered focus:input-primary w-full"
+            />
+          </label>
+
+          <label class="form-control w-full gap-2">
+            <span class="label-text text-base-content">Confirm</span>
+            <input
+              type="password"
+              formControlName="confirmPassword"
+              placeholder="Repeat password"
+              autocomplete="new-password"
+              class="input input-bordered focus:input-primary w-full"
+            />
+          </label>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-full transition-all duration-300 hover:shadow-xl">
+          Register
+        </button>
+      </form>
+
+      <p class="mt-6 text-center text-sm text-base-content/70">
+        Already have an account?
+        <a routerLink="/login" class="link link-primary transition-all duration-300">Login</a>
+      </p>
+    </section>
+  </div>
+</div>
