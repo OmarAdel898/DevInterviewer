@@ -36,7 +36,7 @@ app.use('/',(req,res,next)=>{
 
 app.use('/auth',authRouter);
 app.use('/interviews', interviewRouter);
-app.use('/compiler',compilerRouter);
+app.use('/compile',compilerRouter);
 
 app.use(notFound);
 app.use(errorHandlerMiddleware);
