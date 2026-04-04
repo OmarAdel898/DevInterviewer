@@ -14,7 +14,7 @@ export const register = async (req, res, next) => {
             fullName,
             email,
             password: hashedPassword,
-            role: role || 'interviewer'
+            role: role || 'user'
         });
 
         res.status(201).json({
@@ -64,6 +64,23 @@ export const login = async (req, res, next) => {
     }
 };
 
+export const getUserByEmail=async(req,res,next)=>{
+    try{
+        const{email}=req.body;
+        const user=await User.findOne({email});
+        if(!user){
+            const error=new Error("User not found");
+            error.statusCode = 404;
+            return next(error);
+        }
+        res.status(200).json({
+            success:true,
+            user:{id:user._id,fullName:user.fullName,email:user.email,role:user.role}
+        });
+    } catch (err) {
+        next(err);
+    }
+}
 export const refreshAccessToken = async (req, res, next) => {
     try {
         const token = req.cookies?.refreshToken || req.body?.refreshToken;

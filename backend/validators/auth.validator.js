@@ -33,8 +33,8 @@ export const registerValidator = [
     body('role')
         .optional()
         .trim()
-        .isIn(['admin', 'interviewer'])
-        .withMessage('Role must be either admin or interviewer')
+        .isIn(['admin', 'interviewer', 'user'])
+        .withMessage('Role must be either admin, interviewer, or user')
 ];
 
 export const loginValidator=[
@@ -49,4 +49,13 @@ export const loginValidator=[
         .trim()
         .notEmpty()
         .withMessage('Password is required')
+]
+
+export const emailValidator=[
+    body('email')
+        .trim()
+        .notEmpty()
+        .withMessage('Email is required')
+        .isEmail()
+        .withMessage('Invalid email address'),
 ]

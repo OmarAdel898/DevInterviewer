@@ -4,7 +4,7 @@ const userSchema=new mongoose.Schema({
     fullName:{type:String,required:true},
     email:{type:String,required:true,unique:true},
     password:{type:String,required:true},
-    role:{type:String,enum:["admin","interviewer"],default:"interviewer"},
+    role:{type:String,enum:["admin","interviewer","user"],default:"interviewer"},
     refreshToken:{type:String,default:""}
 
 },{timestamps: true});
