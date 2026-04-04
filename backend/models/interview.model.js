@@ -10,10 +10,24 @@ const interviewSchema=new mongoose.Schema({
         enum: ['pending', 'in-progress', 'completed'], 
         default: 'pending' 
     },
+    focus: {
+        type: String,
+        required: [true, "Focus area is required (e.g., System Design)"],
+        trim: true
+    },
+    time: {
+        type: Date,
+        required: [true, "Scheduled time is required"]
+    },
     owner: { 
         type: mongoose.Schema.Types.ObjectId, 
         ref: 'User', 
         required: true 
+    },
+    candidate: { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: 'User', 
+        required: true
     },
     aiFeedback: {
         score: Number,

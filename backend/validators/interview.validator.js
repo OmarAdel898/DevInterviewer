@@ -22,6 +22,25 @@ export const interviewValidator = [
         .isIn(['javascript', 'typescript', 'python', 'java', 'cpp', 'csharp'])
         .withMessage('Please select a supported programming language'),
 
+    body('focus')
+        .trim()
+        .notEmpty()
+        .withMessage('Focus area is required (e.g., System Design)')
+        .isLength({ min: 3, max: 200 })
+        .withMessage('Focus description must be between 3 and 200 characters'),
+
+    body('time')
+        .notEmpty()
+        .withMessage('Interview time is required')
+        .isISO8601()
+        .withMessage('Please provide a valid date and time format (ISO8601)')
+        .toDate()
+        .custom((value) => {
+            if (new Date(value) < new Date()) {
+                throw new Error('Interview time cannot be in the past');
+            }
+            return true;
+        }),
     body('status')
         .optional()
         .trim()
