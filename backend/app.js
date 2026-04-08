@@ -13,7 +13,8 @@ const app=express();
 const server = http.createServer(app);
 const allowedOrigins = process.env.CLIENT_URL ? process.env.CLIENT_URL.split(',').map((origin) => origin.trim()) : ['http://localhost:4200'];
 
-setupSocket(server);
+const io = setupSocket(server);
+app.set('io', io);
 
 app.use(cors({
     origin: (origin, callback) => {
