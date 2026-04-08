@@ -157,6 +157,12 @@ Updates the code snippet or interview status.
 
 **Endpoint**: `DELETE /interviews/:id`
 
+**Description**
+
+Deletes an interview owned by the authenticated user.
+
+If the interview does not exist or belongs to another user, the endpoint returns `404`.
+
 **Success Response (200 OK)**
 
 ```json

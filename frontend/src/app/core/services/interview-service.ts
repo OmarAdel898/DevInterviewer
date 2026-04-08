@@ -22,4 +22,8 @@ export class InterviewService {
   updateInterviewCode(id: string, data: any): Observable<any> {
     return this.http.patch(`${this.apiUrl}/${id}`, data);
   }
+
+  deleteInterview(id: string): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/${id}`);
+  }
 }

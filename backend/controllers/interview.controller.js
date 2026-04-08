@@ -25,7 +25,30 @@ export const updateInterviewCode=async(req,res,next)=>{
     try{
         const { id } = req.params;
         const { code,status } = req.body;
-        const updated=await Interview.findOneAndUpdate({_id:id,owner:req.user.id},{code,status},{new:true});
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            const error = new Error('Invalid Interview ID format');
+            error.statusCode = 400;
+            return next(error);
+        }
+
+        const updatePayload = {};
+
+        if (typeof code === 'string') {
+            updatePayload.code = code;
+        }
+
+        if (typeof status === 'string') {
+            updatePayload.status = status;
+        }
+
+        if (Object.keys(updatePayload).length === 0) {
+            const error = new Error('No valid fields provided for update');
+            error.statusCode = 400;
+            return next(error);
+        }
+
+        const updated=await Interview.findByIdAndUpdate(id, updatePayload, {new:true});
         if (!updated) {
             const error = new Error("Interview not found or unauthorized");
             error.statusCode = 404;
@@ -89,3 +112,30 @@ export const getInterviewById=async(req,res,next)=>{
         next(err);
     }
 }
+
+export const deleteInterview = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            const error = new Error('Invalid Interview ID format');
+            error.statusCode = 400;
+            return next(error);
+        }
+
+        const deletedInterview = await Interview.findOneAndDelete({ _id: id, owner: req.user.id });
+
+        if (!deletedInterview) {
+            const error = new Error('Interview not found or unauthorized');
+            error.statusCode = 404;
+            return next(error);
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: 'Interview deleted'
+        });
+    } catch (err) {
+        return next(err);
+    }
+};

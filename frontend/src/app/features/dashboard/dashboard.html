@@ -45,6 +45,14 @@
         <span class="badge badge-outline border-base-300">{{ sessions().length }} scheduled</span>
       </div>
 
+      @if (deleteInterviewError()) {
+        <div class="alert alert-error mb-4 py-2 text-sm">{{ deleteInterviewError() }}</div>
+      }
+
+      @if (deleteInterviewSuccess()) {
+        <div class="alert alert-success mb-4 py-2 text-sm">{{ deleteInterviewSuccess() }}</div>
+      }
+
       @if (isLoading()) {
         <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           @for (item of skeletonCards; track item) {
@@ -74,15 +82,31 @@
               <h3 class="text-lg font-semibold text-base-content">{{ session.candidateName }}</h3>
               <p class="mt-2 text-sm text-base-content/70">{{ session.title }}</p>
 
-              <div class="mt-6 flex items-center justify-between">
+              <div class="mt-6 flex items-center justify-between gap-3">
                 <span class="badge badge-outline border-base-300">{{ session.status }}</span>
-                <button
-                  type="button"
-                  class="btn btn-primary btn-sm transition-all duration-300 hover:shadow-xl"
-                  (click)="joinRoom(session._id)"
-                >
-                  Open
-                </button>
+
+                <div class="flex items-center gap-2">
+                  <button
+                    type="button"
+                    class="btn btn-primary btn-sm transition-all duration-300 hover:shadow-xl"
+                    [disabled]="deletingInterviewId() === getSessionId(session)"
+                    (click)="joinRoom(getSessionId(session))"
+                  >
+                    Open
+                  </button>
+
+                  <button
+                    type="button"
+                    class="btn btn-ghost btn-sm text-error"
+                    [disabled]="deletingInterviewId() === getSessionId(session)"
+                    (click)="deleteRoom(session)"
+                  >
+                    @if (deletingInterviewId() === getSessionId(session)) {
+                      <span class="loading loading-spinner loading-xs"></span>
+                    }
+                    Delete
+                  </button>
+                </div>
               </div>
             </article>
           }

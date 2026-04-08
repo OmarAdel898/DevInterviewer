@@ -80,6 +80,9 @@ export class Dashboard implements OnInit, OnDestroy {
   protected readonly createInterviewError = signal<string | null>(null);
   protected readonly createdRoomId = signal<string | null>(null);
   protected readonly hasCopiedRoomId = signal(false);
+  protected readonly deletingInterviewId = signal<string | null>(null);
+  protected readonly deleteInterviewError = signal<string | null>(null);
+  protected readonly deleteInterviewSuccess = signal<string | null>(null);
 
   private loadingTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -89,6 +92,7 @@ export class Dashboard implements OnInit, OnDestroy {
   }
   loadInterviews() {
     this.isLoading.set(true);
+    this.deleteInterviewError.set(null);
     this.interviewService.getMyInterviews().subscribe({
       next: (res) => {
         this.sessions.set(res.data);
@@ -102,6 +106,41 @@ export class Dashboard implements OnInit, OnDestroy {
   }
   joinRoom(interviewId: string) {
     this.router.navigate(['/interview', interviewId]);
+  }
+
+  protected getSessionId(session: any): string {
+    return session?._id || session?.id || '';
+  }
+
+  protected deleteRoom(session: any): void {
+    const interviewId = this.getSessionId(session);
+
+    if (!interviewId || this.deletingInterviewId()) {
+      return;
+    }
+
+    const interviewTitle = session?.title?.trim() || 'this interview';
+    const shouldDelete = window.confirm(`Delete "${interviewTitle}"? This cannot be undone.`);
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    this.deletingInterviewId.set(interviewId);
+    this.deleteInterviewError.set(null);
+    this.deleteInterviewSuccess.set(null);
+
+    this.interviewService.deleteInterview(interviewId).subscribe({
+      next: () => {
+        this.sessions.update((current) => current.filter((item) => this.getSessionId(item) !== interviewId));
+        this.deleteInterviewSuccess.set('Interview deleted successfully.');
+        this.deletingInterviewId.set(null);
+      },
+      error: (error) => {
+        this.deleteInterviewError.set(this.extractErrorMessage(error, 'Failed to delete interview.'));
+        this.deletingInterviewId.set(null);
+      }
+    });
   }
 
   protected openLaunchRoomModal(): void {

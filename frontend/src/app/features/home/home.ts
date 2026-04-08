@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, inject } from '@angular/core';
 import { Router } from '@angular/router';
+import { AuthService } from '../../core/services/auth-service';
 import { InterviewService } from '../../core/services/interview-service';
 
 interface InterviewOwner {
@@ -33,11 +34,15 @@ interface InterviewItem {
 })
 export class Home implements OnInit {
   private readonly interviewService = inject(InterviewService);
+  private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
 
   protected interviews: InterviewItem[] = [];
   protected isLoading = true;
   protected errorMessage: string | null = null;
+  protected deleteErrorMessage: string | null = null;
+  protected deleteSuccessMessage: string | null = null;
+  protected deletingInterviewId: string | null = null;
   protected readonly skeletonCards = [1, 2, 3, 4];
 
   ngOnInit(): void {
@@ -47,6 +52,7 @@ export class Home implements OnInit {
   protected loadInterviews(): void {
     this.isLoading = true;
     this.errorMessage = null;
+    this.deleteErrorMessage = null;
 
     this.interviewService.getMyInterviews().subscribe({
       next: (res: any) => {
@@ -116,6 +122,57 @@ export class Home implements OnInit {
     }
 
     return 'badge-ghost';
+  }
+
+  protected canDeleteInterview(interview: InterviewItem): boolean {
+    const currentUserId = this.authService.currentUser()?.id;
+
+    if (!currentUserId) {
+      return false;
+    }
+
+    const owner = interview.owner;
+
+    if (typeof owner === 'string') {
+      return owner === currentUserId;
+    }
+
+    if (owner && typeof owner === 'object') {
+      return owner._id === currentUserId || owner.id === currentUserId;
+    }
+
+    return false;
+  }
+
+  protected deleteInterview(interview: InterviewItem): void {
+    const interviewId = this.getInterviewId(interview);
+
+    if (!interviewId || this.deletingInterviewId) {
+      return;
+    }
+
+    const interviewTitle = interview.title?.trim() || 'this interview';
+    const shouldDelete = window.confirm(`Delete "${interviewTitle}"? This cannot be undone.`);
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    this.deletingInterviewId = interviewId;
+    this.deleteErrorMessage = null;
+    this.deleteSuccessMessage = null;
+
+    this.interviewService.deleteInterview(interviewId).subscribe({
+      next: () => {
+        this.interviews = this.interviews.filter((item) => this.getInterviewId(item) !== interviewId);
+        this.deleteSuccessMessage = 'Interview deleted successfully.';
+        this.deletingInterviewId = null;
+      },
+      error: (err) => {
+        this.deleteErrorMessage = this.extractErrorMessage(err, 'Failed to delete interview.');
+        this.deletingInterviewId = null;
+      }
+    });
   }
 
   protected joinRoom(interview: InterviewItem): void {

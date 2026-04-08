@@ -49,6 +49,18 @@
 				<span class="badge badge-outline border-base-300">{{ interviews.length }} total</span>
 			</div>
 
+			@if (deleteErrorMessage) {
+				<div class="alert alert-error mb-4 py-2 text-sm">
+					<span>{{ deleteErrorMessage }}</span>
+				</div>
+			}
+
+			@if (deleteSuccessMessage) {
+				<div class="alert alert-success mb-4 py-2 text-sm">
+					<span>{{ deleteSuccessMessage }}</span>
+				</div>
+			}
+
 			@if (isLoading) {
 				<div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
 					@for (item of skeletonCards; track item) {
@@ -114,14 +126,31 @@
 
 							<div class="mt-5 flex items-center justify-between gap-3">
 								<span class="font-mono text-xs text-base-content/60">ID: {{ getInterviewId(interview) || 'N/A' }}</span>
-								<button
-									type="button"
-									class="btn btn-primary btn-sm transition-all duration-300 hover:shadow-xl"
-									[disabled]="!getInterviewId(interview)"
-									(click)="joinRoom(interview)"
-								>
-									Join room
-								</button>
+
+								<div class="flex items-center gap-2">
+									<button
+										type="button"
+										class="btn btn-primary btn-sm transition-all duration-300 hover:shadow-xl"
+										[disabled]="!getInterviewId(interview) || deletingInterviewId === getInterviewId(interview)"
+										(click)="joinRoom(interview)"
+									>
+										Join room
+									</button>
+
+									@if (canDeleteInterview(interview)) {
+										<button
+											type="button"
+											class="btn btn-ghost btn-sm text-error"
+											[disabled]="deletingInterviewId === getInterviewId(interview)"
+											(click)="deleteInterview(interview)"
+										>
+											@if (deletingInterviewId === getInterviewId(interview)) {
+												<span class="loading loading-spinner loading-xs"></span>
+											}
+											Delete
+										</button>
+									}
+								</div>
 							</div>
 						</article>
 					}
