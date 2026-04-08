@@ -1,12 +1,17 @@
 export default (err, req, res, next) => {
-    const statusCode = err.code || err.status || 500;
-    let message = err.message || "Internal Server Error";
+    let statusCode = Number(err?.statusCode || err?.status);
+    if (!statusCode || statusCode < 400 || statusCode > 599) {
+        statusCode = 500;
+    }
+
+    let message = err?.message || "Internal Server Error";
     if (Array.isArray(err)) {
-        message = err[0].msg; 
+        message = err[0]?.msg || message;
     }
 
     res.status(statusCode).json({
         success: false,
-        message: message
+        message,
+        ...(Array.isArray(err?.details) ? { errors: err.details } : {})
     });
 };
