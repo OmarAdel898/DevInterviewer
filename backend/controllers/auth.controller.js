@@ -8,13 +8,14 @@ const REFRESH_EXPIRY = '7d';
 export const register = async (req, res, next) => {
     try {
         const { fullName, email, password, role } = req.body;
+        const safeRole = role === 'interviewer' ? 'interviewer' : 'user';
 
         const hashedPassword = await bcrypt.hash(password, 12);
         const newUser = await User.create({
             fullName,
             email,
             password: hashedPassword,
-            role: role || 'user'
+            role: safeRole
         });
 
         res.status(201).json({
