@@ -1,6 +1,6 @@
 # DevInterviewer API Documentation
 
-API for authentication and interview management in the DevInterviewer platform.
+API for authentication, interview lifecycle management, and reusable problem assignment.
 
 ## Base Routes
 
@@ -8,32 +8,56 @@ API for authentication and interview management in the DevInterviewer platform.
 | --- | --- |
 | Authentication | `/auth` |
 | Interviews | `/interviews` |
+| Problems | `/problems` |
+
+## Auth Header
+
+All protected endpoints require:
+
+```http
+Authorization: Bearer <token>
+```
 
 ## Quick Start Flow
 
 1. Register with `POST /auth/register`.
 2. Login with `POST /auth/login`.
-3. Use the returned access token in `Authorization: Bearer <token>`.
-4. Call interview endpoints under `/interviews`.
+3. Store `accessToken` and send it in `Authorization` header.
+4. Create problems under `/problems`.
+5. Create interviews under `/interviews`.
+6. Assign problems with `PATCH /interviews/:id/problems`.
+7. Start and end lifecycle with `/interviews/:id/start` and `/interviews/:id/end`.
 
 ## Endpoint Cheat Sheet
 
-| Method | Path | Auth Required | Purpose |
+| Method | Path | Auth | Purpose |
 | --- | --- | --- | --- |
-| POST | `/auth/register` | No | Create a new user |
-| POST | `/auth/login` | No | Authenticate and get access token |
+| POST | `/auth/register` | No | Register user |
+| POST | `/auth/login` | No | Login and return access token |
+| GET | `/auth/refresh-token` | No (cookie) | Refresh access token |
+| POST | `/auth/user` | Yes | Lookup user by email |
+| PATCH | `/auth/profile` | Yes | Update current user full name |
+| GET | `/interviews` | Yes | List interviews for current user (owner or candidate view) |
+| GET | `/interviews/:id` | Yes (participant) | Get interview details |
 | POST | `/interviews` | Yes | Create interview |
-| GET | `/interviews` | Yes | List my interviews |
-| PATCH | `/interviews/:id` | Yes | Update code or status |
+| PATCH | `/interviews/:id` | Yes (participant) | Update interview code |
+| PATCH | `/interviews/:id/start` | Yes (owner) | Start interview |
+| PATCH | `/interviews/:id/end` | Yes (owner) | End interview |
+| GET | `/interviews/:id/problems` | Yes (participant) | List assigned problems |
+| PATCH | `/interviews/:id/problems` | Yes (owner) | Assign one or more problems |
+| DELETE | `/interviews/:id/problems/:problemId` | Yes (owner) | Remove assigned problem |
 | DELETE | `/interviews/:id` | Yes | Delete interview |
+| GET | `/problems` | Yes (admin/interviewer) | List my problem bank |
+| GET | `/problems/:id` | Yes (admin/interviewer) | Get one problem |
+| POST | `/problems` | Yes (admin/interviewer) | Create problem |
+| PATCH | `/problems/:id` | Yes (admin/interviewer) | Update problem |
+| DELETE | `/problems/:id` | Yes (admin/interviewer) | Delete problem |
 
 ## Authentication Endpoints
 
-### 1. Register a New User
+### Register
 
-**Endpoint**: `POST /auth/register`
-
-**Request Body**
+`POST /auth/register`
 
 ```json
 {
@@ -44,156 +68,126 @@ API for authentication and interview management in the DevInterviewer platform.
 }
 ```
 
-**Success Response (201 Created)**
+### Login
+
+`POST /auth/login`
 
 ```json
 {
-  "success": true,
-  "message": "User registered successfully",
-  "data": {
-    "id": "69c84...",
-    "fullName": "Omar Adel",
-    "email": "omar@gmail.com"
-  }
+  "email": "omar@gmail.com",
+  "password": "yourpassword123"
 }
 ```
 
-### 2. Login
+Returns `accessToken` and user object.
 
-**Endpoint**: `POST /auth/login`
+### Update Profile
 
-**Request Body**
+`PATCH /auth/profile`
 
 ```json
 {
-  "email": "...",
-  "password": "..."
+  "fullName": "Omar A."
 }
 ```
 
-**Success Response (200 OK)**
-
-Sets an `httpOnly` refresh-token cookie and returns:
-
-```json
-{
-  "success": true,
-  "accessToken": "eyJhbGci...",
-  "user": {
-    "id": "...",
-    "fullName": "...",
-    "role": "interviewer"
-  }
-}
-```
+Returns updated user data.
 
 ## Interview Endpoints
 
-All interview endpoints require this header:
+### Create Interview
 
-```http
-Authorization: Bearer <token>
-```
-
-### 1. Create Interview
-
-**Endpoint**: `POST /interviews`
-
-**Request Body**
+`POST /interviews`
 
 ```json
 {
-  "title": "Frontend Developer Mock",
+  "title": "Frontend Pairing",
   "candidateName": "Ahmed Ali",
-  "language": "javascript"
+  "language": "javascript",
+  "focus": "System design and APIs",
+  "time": "2026-04-15T12:00:00.000Z",
+  "candidate": "67f..."
 }
 ```
 
-**Success Response (201 Created)**
+### Update Code
 
-Returns the full Interview object, including the assigned owner.
-
-### 2. Get My Interviews (Dashboard)
-
-**Endpoint**: `GET /interviews`
-
-**Description**
-
-Returns all interviews where the logged-in user is the owner.
-
-**Success Response (200 OK)**
+`PATCH /interviews/:id`
 
 ```json
 {
-  "success": true,
-  "data": [
-    {
-      "title": "...",
-      "status": "pending",
-      "createdAt": "..."
-    }
-  ]
+  "code": "console.log('autosave payload')"
 }
 ```
 
-### 3. Update Code (Auto-save)
+### Start Interview (Owner Only)
 
-**Endpoint**: `PATCH /interviews/:id`
+`PATCH /interviews/:id/start`
 
-**Description**
+No body required.
 
-Updates the code snippet or interview status.
+### End Interview (Owner Only)
 
-**Request Body**
+`PATCH /interviews/:id/end`
+
+No body required.
+
+### Assign Problems to Interview (Owner Only)
+
+`PATCH /interviews/:id/problems`
 
 ```json
 {
-  "code": "console.log('Syncing...');",
-  "status": "in-progress"
+  "problemIds": ["67f...", "680..."]
 }
 ```
 
-### 4. Delete Interview
+Adds non-duplicate problem assignments and returns updated interview with populated assigned problems.
 
-**Endpoint**: `DELETE /interviews/:id`
+### Remove Assigned Problem (Owner Only)
 
-**Description**
+`DELETE /interviews/:id/problems/:problemId`
 
-Deletes an interview owned by the authenticated user.
+Removes one assignment from the interview.
 
-If the interview does not exist or belongs to another user, the endpoint returns `404`.
+## Problem Endpoints
 
-**Success Response (200 OK)**
+### Create Problem
+
+`POST /problems`
 
 ```json
 {
-  "success": true,
-  "message": "Interview deleted"
+  "title": "Two Sum",
+  "description": "Return indices of two numbers that add up to target.",
+  "difficulty": "easy",
+  "language": "javascript",
+  "starterCode": "function solve(nums, target) {}",
+  "topics": ["arrays", "hashing"]
 }
 ```
+
+### Update Problem
+
+`PATCH /problems/:id`
+
+Supports partial updates for `title`, `description`, `difficulty`, `language`, `starterCode`, and `topics`.
 
 ## Error Responses
 
-All errors follow a unified structure for easier frontend handling.
-
-| Status Code | Description |
-| --- | --- |
-| 400 | Bad Request: Validation failed (for example, title is too short). |
-| 401 | Unauthorized: Token missing, expired, or invalid. |
-| 404 | Not Found: Interview ID does not exist or user is not the owner. |
-| 500 | Server Error: Something went wrong on the backend. |
-
-**Example Error Body**
+Standard format:
 
 ```json
 {
   "success": false,
-  "message": "Interview title is required",
+  "message": "Validation failed",
   "errors": [
     {
-      "msg": "Interview title is required",
+      "msg": "Problem title is required",
       "path": "title"
     }
   ]
 }
 ```
+
+Common status codes: `400`, `401`, `403`, `404`, `500`.

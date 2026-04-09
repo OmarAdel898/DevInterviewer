@@ -47,3 +47,13 @@ export const interviewValidator = [
         .isIn(['pending', 'in-progress', 'completed'])
         .withMessage('Invalid interview status')
 ];
+
+export const assignProblemsValidator = [
+    body('problemIds')
+        .isArray({ min: 1 })
+        .withMessage('At least one problem ID is required'),
+
+    body('problemIds.*')
+        .isMongoId()
+        .withMessage('Each problem ID must be a valid Mongo ID')
+];

@@ -29,6 +29,40 @@ const interviewSchema=new mongoose.Schema({
         ref: 'User', 
         required: true
     },
+    assignedProblems: [{
+        problem: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Problem',
+            required: true
+        },
+        assignedAt: {
+            type: Date,
+            default: Date.now
+        },
+        assignedBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+            required: true
+        }
+    }],
+    startedAt: {
+        type: Date,
+        default: null
+    },
+    startedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null
+    },
+    endedAt: {
+        type: Date,
+        default: null
+    },
+    endedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null
+    },
     aiFeedback: {
         score: Number,
         summary: String,

@@ -41,8 +41,172 @@
 
     <section class="rounded-3xl border border-base-300 bg-base-100 p-8 shadow-xl">
       <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 class="text-xl font-semibold text-base-content">Problem Bank</h2>
+          <p class="text-sm text-base-content/70">Create reusable coding problems and assign them to any interview room.</p>
+        </div>
+        <span class="badge badge-outline border-base-300">{{ problems().length }} total</span>
+      </div>
+
+      @if (problemActionError()) {
+        <div class="alert alert-error mb-4 py-2 text-sm">{{ problemActionError() }}</div>
+      }
+
+      @if (problemActionSuccess()) {
+        <div class="alert alert-success mb-4 py-2 text-sm">{{ problemActionSuccess() }}</div>
+      }
+
+      <div class="rounded-2xl border border-base-300 bg-base-200/30 p-5">
+        <h3 class="text-base font-semibold text-base-content">Create problem</h3>
+
+        <div class="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <label class="form-control w-full md:col-span-2 xl:col-span-2">
+            <span class="label-text mb-1 text-xs font-medium text-base-content/70">Title</span>
+            <input
+              type="text"
+              class="input input-bordered w-full"
+              [value]="problemForm().title"
+              (input)="updateProblemField('title', $event)"
+              placeholder="Two Sum with Index Return"
+            />
+          </label>
+
+          <label class="form-control w-full">
+            <span class="label-text mb-1 text-xs font-medium text-base-content/70">Difficulty</span>
+            <select
+              class="select select-bordered w-full"
+              [value]="problemForm().difficulty"
+              (change)="updateProblemField('difficulty', $event)"
+            >
+              @for (difficulty of problemDifficultyOptions; track difficulty.value) {
+                <option [value]="difficulty.value">{{ difficulty.label }}</option>
+              }
+            </select>
+          </label>
+
+          <label class="form-control w-full">
+            <span class="label-text mb-1 text-xs font-medium text-base-content/70">Language</span>
+            <select
+              class="select select-bordered w-full"
+              [value]="problemForm().language"
+              (change)="updateProblemField('language', $event)"
+            >
+              @for (language of supportedLanguages; track language.value) {
+                <option [value]="language.value">{{ language.label }}</option>
+              }
+            </select>
+          </label>
+
+          <label class="form-control w-full md:col-span-2 xl:col-span-4">
+            <span class="label-text mb-1 text-xs font-medium text-base-content/70">Description</span>
+            <textarea
+              class="textarea textarea-bordered min-h-24 w-full"
+              [value]="problemForm().description"
+              (input)="updateProblemField('description', $event)"
+              placeholder="Describe expected inputs, outputs, and edge cases."
+            ></textarea>
+          </label>
+
+          <label class="form-control w-full md:col-span-2">
+            <span class="label-text mb-1 text-xs font-medium text-base-content/70">Starter code (optional)</span>
+            <textarea
+              class="textarea textarea-bordered min-h-20 w-full font-mono text-xs"
+              [value]="problemForm().starterCode"
+              (input)="updateProblemField('starterCode', $event)"
+              placeholder="function solve(input) {\n  // your code\n}"
+            ></textarea>
+          </label>
+
+          <label class="form-control w-full md:col-span-2">
+            <span class="label-text mb-1 text-xs font-medium text-base-content/70">Topics (comma separated)</span>
+            <input
+              type="text"
+              class="input input-bordered w-full"
+              [value]="problemForm().topics"
+              (input)="updateProblemField('topics', $event)"
+              placeholder="arrays, hashing, pointers"
+            />
+          </label>
+        </div>
+
+        @if (createProblemError()) {
+          <div class="alert alert-error mt-4 py-2 text-sm">{{ createProblemError() }}</div>
+        }
+
+        @if (createProblemSuccess()) {
+          <div class="alert alert-success mt-4 py-2 text-sm">{{ createProblemSuccess() }}</div>
+        }
+
+        <div class="mt-5 flex flex-wrap items-center justify-end gap-2">
+          <button type="button" class="btn btn-outline border-base-300" (click)="loadProblems()">
+            Refresh bank
+          </button>
+          <button type="button" class="btn btn-primary" (click)="createProblem()" [disabled]="isCreatingProblem()">
+            @if (isCreatingProblem()) {
+              <span class="loading loading-spinner loading-xs"></span>
+            }
+            Save problem
+          </button>
+        </div>
+      </div>
+
+      <div class="mt-6">
+        @if (isProblemsLoading()) {
+          <div class="flex items-center gap-2 text-sm text-base-content/70">
+            <span class="loading loading-spinner loading-sm"></span>
+            Loading problem bank...
+          </div>
+        } @else if (problems().length === 0) {
+          <article class="rounded-2xl border border-dashed border-base-300 bg-base-200/30 p-6 text-center">
+            <h3 class="text-base font-semibold text-base-content">No saved problems yet</h3>
+            <p class="mt-2 text-sm text-base-content/70">
+              Add your first coding problem above, then assign it to interview sessions.
+            </p>
+          </article>
+        } @else {
+          <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            @for (problem of problems(); track getProblemId(problem)) {
+              <article class="rounded-2xl border border-base-300 bg-base-100 p-5 shadow-sm">
+                <div class="mb-2 flex items-center justify-between gap-2">
+                  <h3 class="line-clamp-2 text-base font-semibold text-base-content">{{ problem.title }}</h3>
+                  <span class="badge badge-outline border-base-300">{{ problem.difficulty }}</span>
+                </div>
+
+                <p class="mb-3 text-xs uppercase tracking-wide text-base-content/60">{{ problem.language }}</p>
+                <p class="line-clamp-3 text-sm text-base-content/75">{{ problem.description }}</p>
+
+                @if (getProblemTopics(problem).length > 0) {
+                  <div class="mt-3 flex flex-wrap gap-2">
+                    @for (topic of getProblemTopics(problem); track topic) {
+                      <span class="badge badge-outline border-base-300 text-xs">{{ topic }}</span>
+                    }
+                  </div>
+                }
+
+                <div class="mt-4 flex justify-end">
+                  <button
+                    type="button"
+                    class="btn btn-ghost btn-sm text-error"
+                    [disabled]="deletingProblemId() === getProblemId(problem)"
+                    (click)="deleteProblem(problem)"
+                  >
+                    @if (deletingProblemId() === getProblemId(problem)) {
+                      <span class="loading loading-spinner loading-xs"></span>
+                    }
+                    Delete
+                  </button>
+                </div>
+              </article>
+            }
+          </div>
+        }
+      </div>
+    </section>
+
+    <section class="rounded-3xl border border-base-300 bg-base-100 p-8 shadow-xl">
+      <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h2 class="text-xl font-semibold text-base-content">Interview Sessions</h2>
-        <span class="badge badge-outline border-base-300">{{ sessions().length }} scheduled</span>
+        <span class="badge badge-outline border-base-300">{{ listSummaryLabel() }}</span>
       </div>
 
       @if (deleteInterviewError()) {
@@ -52,6 +216,56 @@
       @if (deleteInterviewSuccess()) {
         <div class="alert alert-success mb-4 py-2 text-sm">{{ deleteInterviewSuccess() }}</div>
       }
+
+      <div class="mb-6 grid gap-3 md:grid-cols-2 xl:grid-cols-[2fr_1fr_1fr_auto]">
+        <label class="form-control w-full">
+          <span class="label-text mb-1 text-xs font-medium text-base-content/70">Search</span>
+          <input
+            type="text"
+            class="input input-bordered w-full"
+            [value]="searchQuery()"
+            (input)="updateSearchQuery($event)"
+            placeholder="Search title, candidate, or language"
+          />
+        </label>
+
+        <label class="form-control w-full">
+          <span class="label-text mb-1 text-xs font-medium text-base-content/70">Status</span>
+          <select
+            class="select select-bordered w-full"
+            [value]="selectedStatusFilter()"
+            (change)="updateStatusFilter($event)"
+          >
+            @for (option of statusFilterOptions; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+        </label>
+
+        <label class="form-control w-full">
+          <span class="label-text mb-1 text-xs font-medium text-base-content/70">Language</span>
+          <select
+            class="select select-bordered w-full"
+            [value]="selectedLanguageFilter()"
+            (change)="updateLanguageFilter($event)"
+          >
+            @for (option of languageFilterOptions; track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+        </label>
+
+        <div class="flex items-end">
+          <button
+            type="button"
+            class="btn btn-outline w-full border-base-300"
+            (click)="resetListFilters()"
+            [disabled]="!hasActiveListFilters()"
+          >
+            Reset
+          </button>
+        </div>
+      </div>
 
       @if (isLoading()) {
         <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -67,10 +281,24 @@
             </article>
           }
         </div>
+      } @else if (sessions().length === 0) {
+        <article class="rounded-2xl border border-dashed border-base-300 bg-base-200/30 p-10 text-center">
+          <h3 class="text-lg font-semibold text-base-content">No interview sessions yet</h3>
+          <p class="mt-2 text-sm text-base-content/70">
+            Launch your first room to start interviewing candidates.
+          </p>
+        </article>
+      } @else if (filteredSessionsCount() === 0) {
+        <article class="rounded-2xl border border-dashed border-base-300 bg-base-200/30 p-10 text-center">
+          <h3 class="text-lg font-semibold text-base-content">No matching interviews</h3>
+          <p class="mt-2 text-sm text-base-content/70">
+            Try adjusting search or filters to find a session.
+          </p>
+          <button type="button" class="btn btn-outline mt-4" (click)="resetListFilters()">Clear filters</button>
+        </article>
       } @else {
-        
         <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          @for (session of sessions(); track session._id || session.id) {
+          @for (session of pagedSessions(); track getSessionId(session)) {
             <article
               class="group rounded-2xl border border-base-300 bg-base-100 p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
             >
@@ -81,11 +309,21 @@
 
               <h3 class="text-lg font-semibold text-base-content">{{ session.candidateName }}</h3>
               <p class="mt-2 text-sm text-base-content/70">{{ session.title }}</p>
+              <p class="mt-2 text-xs text-base-content/60">{{ getAssignedProblemCountLabel(session) }}</p>
 
               <div class="mt-6 flex items-center justify-between gap-3">
                 <span class="badge badge-outline border-base-300">{{ session.status }}</span>
 
                 <div class="flex items-center gap-2">
+                  <button
+                    type="button"
+                    class="btn btn-outline btn-sm border-base-300"
+                    [disabled]="deletingInterviewId() === getSessionId(session)"
+                    (click)="openAssignProblemsModal(session)"
+                  >
+                    Assign
+                  </button>
+
                   <button
                     type="button"
                     class="btn btn-primary btn-sm transition-all duration-300 hover:shadow-xl"
@@ -110,6 +348,41 @@
               </div>
             </article>
           }
+        </div>
+
+        <div class="mt-6 flex flex-col items-center justify-between gap-3 md:flex-row">
+          <p class="text-sm text-base-content/70">Page {{ currentPage() }} of {{ totalPages() }}</p>
+
+          <div class="join">
+            <button
+              type="button"
+              class="join-item btn btn-sm"
+              (click)="goToPreviousPage()"
+              [disabled]="currentPage() === 1"
+            >
+              Prev
+            </button>
+
+            @for (page of pageNumbers(); track page) {
+              <button
+                type="button"
+                class="join-item btn btn-sm"
+                [class.btn-active]="currentPage() === page"
+                (click)="goToPage(page)"
+              >
+                {{ page }}
+              </button>
+            }
+
+            <button
+              type="button"
+              class="join-item btn btn-sm"
+              (click)="goToNextPage()"
+              [disabled]="currentPage() === totalPages()"
+            >
+              Next
+            </button>
+          </div>
         </div>
       }
     </section>
@@ -292,5 +565,152 @@
 
   <form method="dialog" class="modal-backdrop">
     <button type="submit" (click)="closeLaunchRoomModal()">close</button>
+  </form>
+</dialog>
+
+<dialog #deleteRoomModal id="delete_room_modal" class="modal">
+  <div class="modal-box max-w-md rounded-2xl border border-base-300">
+    <h3 class="text-lg font-semibold">Delete interview room?</h3>
+    <p class="mt-2 text-sm text-base-content/70">
+      This will permanently delete
+      <span class="font-semibold text-base-content">{{ getPendingDeleteTitle() }}</span>
+      and remove it for all participants.
+    </p>
+
+    <div class="modal-action">
+      <button
+        type="button"
+        class="btn btn-error"
+        (click)="confirmDeleteRoom()"
+        [disabled]="!pendingDeleteSession() || deletingInterviewId() === getSessionId(pendingDeleteSession())"
+      >
+        @if (deletingInterviewId() === getSessionId(pendingDeleteSession())) {
+          <span class="loading loading-spinner loading-xs"></span>
+        }
+        Delete room
+      </button>
+
+      <button
+        type="button"
+        class="btn btn-ghost"
+        (click)="closeDeleteRoomModal()"
+        [disabled]="deletingInterviewId() === getSessionId(pendingDeleteSession())"
+      >
+        Cancel
+      </button>
+    </div>
+  </div>
+
+  <form method="dialog" class="modal-backdrop">
+    <button type="submit" (click)="closeDeleteRoomModal()">close</button>
+  </form>
+</dialog>
+
+<dialog #assignProblemsModal id="assign_problems_modal" class="modal">
+  <div class="modal-box w-11/12 max-w-3xl rounded-3xl border border-base-300">
+    <h3 class="text-xl font-semibold">Assign Problems</h3>
+    <p class="mt-1 text-sm text-base-content/70">
+      Choose one or more problems from your bank for
+      <span class="font-semibold text-base-content">{{ selectedInterviewForAssignment()?.title || 'this interview' }}</span>.
+    </p>
+
+    @if (assignProblemsError()) {
+      <div class="alert alert-error mt-4 py-2 text-sm">{{ assignProblemsError() }}</div>
+    }
+
+    @if (assignProblemsSuccess()) {
+      <div class="alert alert-success mt-4 py-2 text-sm">{{ assignProblemsSuccess() }}</div>
+    }
+
+    <div class="mt-5 grid gap-4 lg:grid-cols-[2fr_1fr]">
+      <section class="rounded-2xl border border-base-300 bg-base-100 p-4">
+        <div class="mb-3 flex items-center justify-between">
+          <h4 class="font-semibold text-base-content">Select problems</h4>
+          <span class="badge badge-outline border-base-300">{{ selectedProblemIds().length }} selected</span>
+        </div>
+
+        @if (isAssignmentLoading()) {
+          <div class="flex items-center gap-2 text-sm text-base-content/70">
+            <span class="loading loading-spinner loading-sm"></span>
+            Loading interview assignments...
+          </div>
+        } @else if (problems().length === 0) {
+          <div class="rounded-xl border border-dashed border-base-300 bg-base-200/30 p-4 text-sm text-base-content/70">
+            No problems available yet. Create problems in the Problem Bank first.
+          </div>
+        } @else {
+          <div class="max-h-80 space-y-2 overflow-y-auto pr-1">
+            @for (problem of problems(); track getProblemId(problem)) {
+              <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-base-300 p-3 transition hover:bg-base-200/40">
+                <input
+                  type="checkbox"
+                  class="checkbox checkbox-sm checkbox-primary mt-1"
+                  [checked]="isProblemSelected(getProblemId(problem))"
+                  (change)="toggleProblemSelection(getProblemId(problem), $event)"
+                />
+
+                <div class="flex-1">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <p class="font-medium text-base-content">{{ problem.title }}</p>
+                    <span class="badge badge-outline border-base-300 text-xs">{{ problem.difficulty }}</span>
+                    <span class="badge badge-outline border-base-300 text-xs">{{ problem.language }}</span>
+                  </div>
+                  <p class="mt-1 line-clamp-2 text-xs text-base-content/70">{{ problem.description }}</p>
+                </div>
+              </label>
+            }
+          </div>
+        }
+      </section>
+
+      <section class="rounded-2xl border border-base-300 bg-base-200/30 p-4">
+        <h4 class="mb-3 font-semibold text-base-content">Currently assigned</h4>
+
+        @if (currentAssignedProblems().length === 0) {
+          <p class="text-sm text-base-content/70">No problems are assigned to this interview yet.</p>
+        } @else {
+          <div class="space-y-2">
+            @for (problem of currentAssignedProblems(); track getProblemId(problem)) {
+              <div class="rounded-xl border border-base-300 bg-base-100 p-3">
+                <p class="text-sm font-medium text-base-content">{{ problem.title }}</p>
+                <p class="mt-1 text-xs text-base-content/60">{{ problem.difficulty }} • {{ problem.language }}</p>
+                <button
+                  type="button"
+                  class="btn btn-ghost btn-xs mt-2 text-error"
+                  [disabled]="removingAssignedProblemId() === getProblemId(problem)"
+                  (click)="removeAssignedProblemFromInterview(problem)"
+                >
+                  @if (removingAssignedProblemId() === getProblemId(problem)) {
+                    <span class="loading loading-spinner loading-xs"></span>
+                  }
+                  Remove
+                </button>
+              </div>
+            }
+          </div>
+        }
+      </section>
+    </div>
+
+    <div class="modal-action mt-6">
+      <button
+        type="button"
+        class="btn btn-primary"
+        (click)="saveAssignedProblems()"
+        [disabled]="isAssigningProblems() || isAssignmentLoading() || problems().length === 0"
+      >
+        @if (isAssigningProblems()) {
+          <span class="loading loading-spinner loading-xs"></span>
+        }
+        Save assignments
+      </button>
+      <form method="dialog">
+        <button type="submit" class="btn btn-ghost" (click)="closeAssignProblemsModal()">Close</button>
+      </form>
+    </div>
+  </div>
+
+  <form method="dialog" class="modal-backdrop">
+    <button type="submit" (click)="closeAssignProblemsModal()">close</button>
   </form>
 </dialog>

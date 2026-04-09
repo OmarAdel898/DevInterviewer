@@ -8,6 +8,7 @@ import notFound from './middlewares/notFound.middleware.js';
 import authRouter from './routes/auth.router.js'
 import interviewRouter from './routes/interviews.router.js';
 import compilerRouter from './routes/compiler.router.js';
+import problemRouter from './routes/problem.router.js';
 import errorHandlerMiddleware from './middlewares/errorHandler.middleware.js';
 const app=express();
 const server = http.createServer(app);
@@ -38,6 +39,7 @@ app.use('/',(req,res,next)=>{
 app.use('/auth',authRouter);
 app.use('/interviews', interviewRouter);
 app.use('/compile',compilerRouter);
+app.use('/problems', problemRouter);
 
 app.use(notFound);
 app.use(errorHandlerMiddleware);

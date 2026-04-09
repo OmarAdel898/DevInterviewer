@@ -23,6 +23,26 @@ export class InterviewService {
     return this.http.patch(`${this.apiUrl}/${id}`, data);
   }
 
+  startInterview(id: string): Observable<any> {
+    return this.http.patch(`${this.apiUrl}/${id}/start`, {});
+  }
+
+  endInterview(id: string): Observable<any> {
+    return this.http.patch(`${this.apiUrl}/${id}/end`, {});
+  }
+
+  assignProblems(id: string, problemIds: string[]): Observable<any> {
+    return this.http.patch(`${this.apiUrl}/${id}/problems`, { problemIds });
+  }
+
+  removeAssignedProblem(id: string, problemId: string): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/${id}/problems/${problemId}`);
+  }
+
+  getInterviewProblems(id: string): Observable<any> {
+    return this.http.get(`${this.apiUrl}/${id}/problems`);
+  }
+
   deleteInterview(id: string): Observable<any> {
     return this.http.delete(`${this.apiUrl}/${id}`);
   }

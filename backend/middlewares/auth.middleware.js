@@ -75,3 +75,29 @@ export const isParticipant = async (req, res, next) => {
         next(err); 
     }
 };
+
+export const isOwner = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user?.id;
+
+        const interview = await Interview.findById(id);
+
+        if (!interview) {
+            const error = new Error('Interview not found');
+            error.statusCode = 404;
+            return next(error);
+        }
+
+        const ownerId = interview.owner?.toString();
+        if (ownerId !== userId?.toString()) {
+            const error = new Error('Only interview owner can perform this action');
+            error.statusCode = 403;
+            return next(error);
+        }
+
+        return next();
+    } catch (err) {
+        return next(err);
+    }
+};
