@@ -108,3 +108,39 @@ export const refreshAccessToken = async (req, res, next) => {
         next(err);
     }
 };
+
+export const updateProfile = async (req, res, next) => {
+    try {
+        const { fullName } = req.body;
+
+        if (typeof fullName !== 'string' || !fullName.trim()) {
+            const error = new Error('Full name is required');
+            error.statusCode = 400;
+            return next(error);
+        }
+
+        const user = await User.findById(req.user.id);
+
+        if (!user) {
+            const error = new Error('User not found');
+            error.statusCode = 404;
+            return next(error);
+        }
+
+        user.fullName = fullName.trim();
+        await user.save();
+
+        return res.status(200).json({
+            success: true,
+            message: 'Profile updated successfully',
+            user: {
+                id: user._id,
+                fullName: user.fullName,
+                email: user.email,
+                role: user.role
+            }
+        });
+    } catch (err) {
+        return next(err);
+    }
+};

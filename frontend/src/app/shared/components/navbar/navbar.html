@@ -32,7 +32,7 @@
     <div class="navbar-end gap-2">
       @if (authService.currentUser()) {
         <a
-          routerLink="/dashboard"
+          [routerLink]="dashboardRoute"
           class="btn btn-ghost btn-sm border border-transparent transition-all duration-300 hover:border-base-300"
         >
           Dashboard
@@ -60,7 +60,7 @@
               <span class="font-mono text-xs text-primary">Signed in</span>
             </li>
             <li>
-              <button type="button" class="transition-all duration-300 hover:bg-base-200">Profile</button>
+              <a routerLink="/profile" class="transition-all duration-300 hover:bg-base-200">Profile</a>
             </li>
             <li>
               <button type="button" class="transition-all duration-300 hover:bg-base-200" (click)="logout()">Logout</button>

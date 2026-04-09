@@ -1,0 +1,59 @@
+<section class="min-h-screen bg-base-200 px-4 py-8 md:px-8 md:py-12">
+  <div class="mx-auto max-w-3xl">
+    <article class="rounded-3xl border border-base-300 bg-base-100 p-8 shadow-xl md:p-10">
+      <div class="mb-6">
+        <h1 class="text-3xl font-semibold text-base-content">Profile Settings</h1>
+        <p class="mt-2 text-sm text-base-content/70">
+          Update your display name and choose your preferred DaisyUI theme.
+        </p>
+      </div>
+
+      @if (successMessage()) {
+        <div class="alert alert-success mb-4 py-2 text-sm">{{ successMessage() }}</div>
+      }
+
+      @if (errorMessage()) {
+        <div class="alert alert-error mb-4 py-2 text-sm">{{ errorMessage() }}</div>
+      }
+
+      <form [formGroup]="profileForm" class="grid gap-4">
+        <label class="form-control w-full">
+          <span class="label-text mb-2 text-sm font-medium">Full name</span>
+          <input
+            type="text"
+            class="input input-bordered w-full"
+            formControlName="fullName"
+            placeholder="Enter your full name"
+          />
+        </label>
+
+        <label class="form-control w-full">
+          <span class="label-text mb-2 text-sm font-medium">Theme</span>
+          <select
+            class="select select-bordered w-full"
+            formControlName="theme"
+            (change)="onThemeChange($event)"
+          >
+            @for (theme of availableThemes; track theme) {
+              <option [value]="theme">{{ theme }}</option>
+            }
+          </select>
+        </label>
+
+        <div class="mt-2">
+          <button
+            type="button"
+            class="btn btn-primary"
+            (click)="saveProfile()"
+            [disabled]="isSaving()"
+          >
+            @if (isSaving()) {
+              <span class="loading loading-spinner loading-xs"></span>
+            }
+            Save changes
+          </button>
+        </div>
+      </form>
+    </article>
+  </div>
+</section>

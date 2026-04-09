@@ -13,6 +13,11 @@ import { AuthService } from '../../../core/services/auth-service';
 export class Navbar {
   authService = inject(AuthService);
 
+  get dashboardRoute(): string {
+    const role = this.authService.currentUser()?.role;
+    return role === 'user' ? '/my-interviews' : '/dashboard';
+  }
+
   logout() {
     this.authService.logout();
   }

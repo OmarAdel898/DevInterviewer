@@ -59,3 +59,14 @@ export const emailValidator=[
         .isEmail()
         .withMessage('Invalid email address'),
 ]
+
+    export const profileValidator = [
+        body('fullName')
+        .trim()
+        .notEmpty()
+        .withMessage('Full name is required')
+        .matches(/^[a-zA-Z ]+$/)
+        .withMessage('Full name must contain only letters and spaces')
+        .isLength({ min: 3, max: 100 })
+        .withMessage('Full name must be between 3 and 100 characters')
+    ];

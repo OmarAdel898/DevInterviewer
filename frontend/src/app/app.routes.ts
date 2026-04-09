@@ -21,6 +21,11 @@ export const routes: Routes = [
         canActivate: [roleGuard(['user'])],
         loadComponent: () => import('./features/home/home').then((m) => m.Home),
     },
+    {
+        path: 'profile',
+        canActivate: [roleGuard(['admin', 'interviewer', 'user'])],
+        loadComponent: () => import('./features/profile/profile').then((m) => m.Profile),
+    },
     { path: 'interview/:id',canActivate: [roleGuard(['admin', 'interviewer', 'user'])], loadComponent: () => import('./features/interview-room/interview-room').then((m) => m.InterviewRoom)},
     { path: '**', redirectTo: 'login' },
 ];
