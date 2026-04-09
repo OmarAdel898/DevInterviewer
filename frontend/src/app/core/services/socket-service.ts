@@ -44,6 +44,14 @@ export class SocketService implements OnDestroy{
     }
   }
 
+  leaveInterview(interviewId?: string): void {
+    if (interviewId && this.socket.connected) {
+      this.socket.emit('leave-interview', interviewId);
+    }
+
+    this.activeInterviewId = null;
+  }
+
   emit(event: string, data: any) {
     this.socket.emit(event, data);
   }

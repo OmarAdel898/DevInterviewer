@@ -1,10 +1,12 @@
-import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, DestroyRef, ElementRef, inject, OnDestroy, OnInit, signal, ViewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import { SocketService } from '../../core/services/socket-service';
 import { InterviewService } from '../../core/services/interview-service';
 import { CompilerService } from '../../core/services/compiler-service';
-import { EMPTY, Subject, catchError, debounceTime, distinctUntilChanged, finalize, switchMap, tap } from 'rxjs';
+import { AuthService } from '../../core/services/auth-service';
+import { Router } from '@angular/router';
+import { EMPTY, Subject, Subscription, catchError, debounceTime, distinctUntilChanged, finalize, interval, startWith, switchMap, tap } from 'rxjs';
 
 const JS_STARTER_CODE = `function containsDuplicate(nums) {
   const seen = new Set();
@@ -24,6 +26,28 @@ const PY_STARTER_CODE = `def contains_duplicate(nums):
     return False`;
 
 type SaveState = 'idle' | 'pending' | 'saving' | 'saved' | 'error';
+type InterviewStatus = 'pending' | 'in-progress' | 'completed';
+
+interface AssignedProblem {
+  problem?: {
+    _id?: string;
+    title?: string;
+    description?: string;
+    difficulty?: string;
+    language?: string;
+    starterCode?: string;
+    topics?: string[];
+  };
+  assignedAt?: string;
+  assignedBy?: string;
+}
+
+interface RoomParticipant {
+  userId: string;
+  fullName: string;
+  role: 'admin' | 'interviewer' | 'user' | string;
+  connections: number;
+}
 
 @Component({
   selector: 'app-interview-room',
@@ -32,21 +56,56 @@ type SaveState = 'idle' | 'pending' | 'saving' | 'saved' | 'error';
   templateUrl: './interview-room.html',
   styleUrl: './interview-room.css',
 })
-export class InterviewRoom implements OnInit {
+export class InterviewRoom implements OnInit, OnDestroy {
+  @ViewChild('completeInterviewModal') private completeInterviewModal?: ElementRef<HTMLDialogElement>;
+
   private route = inject(ActivatedRoute);
   private destroyRef = inject(DestroyRef);
+  private router = inject(Router);
   private socketService = inject(SocketService);
   private interview = inject(InterviewService);
   private compiler = inject(CompilerService);
+  private authService = inject(AuthService);
   private localCodeChanges$ = new Subject<string>();
+  private waitingPollSubscription: Subscription | null = null;
+  private redirectTimer: ReturnType<typeof setTimeout> | null = null;
 
   interviewId = '';
   selectedLanguage = signal<'javascript' | 'python'>('javascript');
   code = signal(JS_STARTER_CODE);
   output = signal('');
+  interviewTitle = signal('this interview');
+  interviewOwnerId = signal('');
+  interviewStatus = signal<InterviewStatus>('pending');
+  assignedProblems = signal<AssignedProblem[]>([]);
+  selectedProblemIndex = signal(0);
+  waitingMessage = signal('Waiting for interviewer to start the interview...');
+  participants = signal<RoomParticipant[]>([]);
+  isPresenceLoaded = signal(false);
   isRunning = signal(false);
+  isStatusUpdating = signal(false);
+  statusError = signal<string | null>(null);
   saveState = signal<SaveState>('idle');
   lastSavedLabel = signal<string>('');
+
+  currentUserRole = computed(() => this.authService.currentUser()?.role || 'user');
+  currentUserId = computed(() => this.authService.currentUser()?.id || '');
+  isOwner = computed(() => this.currentUserId() !== '' && this.currentUserId() === this.interviewOwnerId());
+  onlineCount = computed(() => this.participants().length);
+  activeProblem = computed(() => {
+    return this.assignedProblems()[this.selectedProblemIndex()]?.problem || null;
+  });
+  hasAssignedProblems = computed(() => this.assignedProblems().length > 0);
+  isWaitingForStart = computed(() => this.interviewStatus() === 'pending' && !this.isOwner());
+  isLockedByLifecycle = computed(() => this.interviewStatus() === 'completed' || this.isWaitingForStart());
+
+  canCompleteInterview = computed(() => {
+    return this.isOwner() && this.interviewStatus() === 'in-progress';
+  });
+
+  canStartInterview = computed(() => this.isOwner() && this.interviewStatus() === 'pending');
+
+  isInterviewCompleted = computed(() => this.interviewStatus() === 'completed');
 
   lineNumbers = computed(() => {
     const totalLines = Math.max(1, this.code().split('\n').length);
@@ -96,8 +155,6 @@ export class InterviewRoom implements OnInit {
       )
       .subscribe();
 
-    this.socketService.joinInterview(this.interviewId);
-
     this.socketService
       .listen('receive-code')
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -114,23 +171,87 @@ export class InterviewRoom implements OnInit {
         this.output.set(payload.output || '');
       });
 
+    this.socketService
+      .listen('receive-status')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((payload: { interviewId: string; status: InterviewStatus }) => {
+        if (!payload) return;
+        if (payload.interviewId && payload.interviewId !== this.interviewId) return;
+
+        this.onInterviewStatusChanged(this.normalizeStatus(payload.status));
+      });
+
+    this.socketService
+      .listen('interview-started')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((payload: { interviewId: string }) => {
+        if (!payload) return;
+        if (payload.interviewId && payload.interviewId !== this.interviewId) return;
+
+        this.onInterviewStatusChanged('in-progress');
+      });
+
+    this.socketService
+      .listen('interview-ended')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((payload: { interviewId: string }) => {
+        if (!payload) return;
+        if (payload.interviewId && payload.interviewId !== this.interviewId) return;
+
+        this.onInterviewStatusChanged('completed');
+      });
+
+    this.socketService
+      .listen('interview-waiting')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((payload: { interviewId: string; message?: string }) => {
+        if (!payload) return;
+        if (payload.interviewId && payload.interviewId !== this.interviewId) return;
+
+        this.waitingMessage.set(payload.message || 'Waiting for interviewer to start the interview...');
+      });
+
+    this.socketService
+      .listen('receive-presence')
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((payload: { interviewId: string; participants: RoomParticipant[] }) => {
+        if (!payload) return;
+        if (payload.interviewId && payload.interviewId !== this.interviewId) return;
+
+        const nextParticipants = Array.isArray(payload.participants) ? payload.participants : [];
+        this.participants.set(nextParticipants);
+        this.isPresenceLoaded.set(true);
+      });
+
     this.interview
       .getInterviewById(this.interviewId)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (res) => {
-          const serverCode = res?.data?.code;
-          if (typeof serverCode === 'string' && serverCode.trim().length > 0) {
-            this.code.set(serverCode);
-          }
-          this.saveState.set('saved');
-          this.lastSavedLabel.set(new Date().toLocaleTimeString());
+          this.applyInterviewData(res?.data || {});
         },
         error: () => this.saveState.set('error'),
       });
   }
 
+  ngOnDestroy(): void {
+    this.stopWaitingPoll();
+    this.socketService.leaveInterview(this.interviewId);
+
+    if (this.redirectTimer) {
+      clearTimeout(this.redirectTimer);
+      this.redirectTimer = null;
+    }
+  }
+
   run() {
+    if (this.isLockedByLifecycle()) {
+      this.output.set(this.isInterviewCompleted()
+        ? 'Interview is completed. Running code is disabled.'
+        : 'Waiting for interviewer to start the interview.');
+      return;
+    }
+
     if (this.isRunning()) {
       return;
     }
@@ -157,6 +278,10 @@ export class InterviewRoom implements OnInit {
   }
 
   onCodeUpdate(newCode: string) {
+    if (this.isLockedByLifecycle()) {
+      return;
+    }
+
     this.code.set(newCode);
     this.saveState.set('pending');
 
@@ -169,6 +294,10 @@ export class InterviewRoom implements OnInit {
   }
 
   onLanguageChange(language: 'javascript' | 'python'): void {
+    if (this.isLockedByLifecycle()) {
+      return;
+    }
+
     const previousStarter = this.selectedLanguage() === 'javascript' ? JS_STARTER_CODE : PY_STARTER_CODE;
     const nextStarter = language === 'javascript' ? JS_STARTER_CODE : PY_STARTER_CODE;
 
@@ -188,6 +317,10 @@ export class InterviewRoom implements OnInit {
   }
 
   onSave() {
+    if (this.isLockedByLifecycle()) {
+      return;
+    }
+
     this.saveState.set('saving');
 
     this.interview.updateInterviewCode(this.interviewId, { code: this.code() }).subscribe({
@@ -199,5 +332,206 @@ export class InterviewRoom implements OnInit {
         this.saveState.set('error');
       },
     });
+  }
+
+  startInterview(): void {
+    if (!this.canStartInterview() || this.isStatusUpdating()) {
+      return;
+    }
+
+    this.isStatusUpdating.set(true);
+    this.statusError.set(null);
+
+    this.interview
+      .startInterview(this.interviewId)
+      .pipe(
+        finalize(() => this.isStatusUpdating.set(false)),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: () => {
+          this.onInterviewStatusChanged('in-progress');
+          this.output.set('Interview started successfully.');
+        },
+        error: (err) => {
+          this.statusError.set(this.extractErrorMessage(err, 'Failed to start interview.'));
+        }
+      });
+  }
+
+  openCompleteInterviewModal(): void {
+    if (!this.canCompleteInterview() || this.isStatusUpdating()) {
+      return;
+    }
+
+    this.statusError.set(null);
+    this.completeInterviewModal?.nativeElement.showModal();
+  }
+
+  closeCompleteInterviewModal(): void {
+    this.completeInterviewModal?.nativeElement.close();
+  }
+
+  confirmCompleteInterview(): void {
+    if (this.interviewStatus() === 'completed' || this.isStatusUpdating()) {
+      return;
+    }
+
+    this.isStatusUpdating.set(true);
+    this.statusError.set(null);
+
+    this.interview
+      .endInterview(this.interviewId)
+      .pipe(
+        finalize(() => this.isStatusUpdating.set(false)),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: () => {
+          this.onInterviewStatusChanged('completed');
+          this.closeCompleteInterviewModal();
+          this.output.set('Interview marked as completed.');
+        },
+        error: (err) => {
+          this.statusError.set(this.extractErrorMessage(err, 'Failed to mark interview as completed.'));
+          this.closeCompleteInterviewModal();
+        },
+      });
+  }
+
+  selectProblem(index: number): void {
+    if (index < 0 || index >= this.assignedProblems().length) {
+      return;
+    }
+
+    this.selectedProblemIndex.set(index);
+  }
+
+  private applyInterviewData(interviewData: any): void {
+    const serverCode = interviewData.code;
+    if (typeof serverCode === 'string' && serverCode.trim().length > 0) {
+      this.code.set(serverCode);
+    }
+
+    const serverLanguage = typeof interviewData.language === 'string' ? interviewData.language.toLowerCase() : '';
+    this.selectedLanguage.set(serverLanguage === 'python' ? 'python' : 'javascript');
+
+    if (typeof interviewData.title === 'string' && interviewData.title.trim()) {
+      this.interviewTitle.set(interviewData.title.trim());
+    }
+
+    const owner = interviewData.owner;
+    if (typeof owner === 'string') {
+      this.interviewOwnerId.set(owner);
+    } else if (owner && typeof owner === 'object') {
+      this.interviewOwnerId.set(owner._id || owner.id || '');
+    }
+
+    const assignedProblems = Array.isArray(interviewData.assignedProblems) ? interviewData.assignedProblems : [];
+    this.assignedProblems.set(assignedProblems);
+
+    if (this.selectedProblemIndex() >= assignedProblems.length) {
+      this.selectedProblemIndex.set(0);
+    }
+
+    this.onInterviewStatusChanged(this.normalizeStatus(interviewData.status));
+
+    this.saveState.set('saved');
+    this.lastSavedLabel.set(new Date().toLocaleTimeString());
+  }
+
+  private onInterviewStatusChanged(nextStatus: InterviewStatus): void {
+    this.interviewStatus.set(nextStatus);
+
+    if (nextStatus === 'in-progress') {
+      this.stopWaitingPoll();
+      this.socketService.joinInterview(this.interviewId);
+      return;
+    }
+
+    if (nextStatus === 'pending') {
+      if (this.isOwner()) {
+        this.socketService.joinInterview(this.interviewId);
+        this.stopWaitingPoll();
+      } else {
+        this.startWaitingPoll();
+      }
+
+      return;
+    }
+
+    this.stopWaitingPoll();
+    this.isRunning.set(false);
+    this.saveState.set('saved');
+    this.closeCompleteInterviewModal();
+    this.socketService.leaveInterview(this.interviewId);
+
+    if (!this.isOwner()) {
+      this.waitingMessage.set('Interview has ended. Redirecting you to My Interviews...');
+      this.scheduleCandidateRedirect();
+    }
+  }
+
+  private startWaitingPoll(): void {
+    if (this.waitingPollSubscription) {
+      return;
+    }
+
+    this.waitingPollSubscription = interval(3000)
+      .pipe(
+        startWith(0),
+        switchMap(() => this.interview.getInterviewById(this.interviewId)),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: (res) => {
+          const status = this.normalizeStatus(res?.data?.status);
+          if (status !== 'pending') {
+            this.applyInterviewData(res?.data || {});
+            this.stopWaitingPoll();
+          }
+        },
+        error: () => {
+          this.stopWaitingPoll();
+        }
+      });
+  }
+
+  private stopWaitingPoll(): void {
+    if (!this.waitingPollSubscription) {
+      return;
+    }
+
+    this.waitingPollSubscription.unsubscribe();
+    this.waitingPollSubscription = null;
+  }
+
+  private scheduleCandidateRedirect(): void {
+    if (this.redirectTimer) {
+      clearTimeout(this.redirectTimer);
+    }
+
+    this.redirectTimer = setTimeout(() => {
+      this.router.navigate(['/my-interviews']);
+    }, 4000);
+  }
+
+  private normalizeStatus(status: unknown): InterviewStatus {
+    if (status === 'in-progress' || status === 'completed') {
+      return status;
+    }
+
+    return 'pending';
+  }
+
+  private extractErrorMessage(error: unknown, fallback: string): string {
+    const maybeHttpError = error as { error?: { message?: unknown } };
+    const message = maybeHttpError?.error?.message;
+
+    if (typeof message === 'string' && message.trim().length > 0) {
+      return message;
+    }
+
+    return fallback;
   }
 }

@@ -46,7 +46,7 @@
 		<section class="rounded-3xl border border-base-300 bg-base-100 p-8 shadow-xl">
 			<div class="mb-6 flex flex-wrap items-center justify-between gap-3">
 				<h2 class="text-xl font-semibold text-base-content">Assigned Interview Rooms</h2>
-				<span class="badge badge-outline border-base-300">{{ interviews.length }} total</span>
+				<span class="badge badge-outline border-base-300">{{ listSummaryLabel }}</span>
 			</div>
 
 			@if (deleteErrorMessage) {
@@ -60,6 +60,56 @@
 					<span>{{ deleteSuccessMessage }}</span>
 				</div>
 			}
+
+			<div class="mb-6 grid gap-3 md:grid-cols-2 xl:grid-cols-[2fr_1fr_1fr_auto]">
+				<label class="form-control w-full">
+					<span class="label-text mb-1 text-xs font-medium text-base-content/70">Search</span>
+					<input
+						type="text"
+						class="input input-bordered w-full"
+						[value]="searchQuery"
+						(input)="updateSearchQuery($event)"
+						placeholder="Search title, candidate, or language"
+					/>
+				</label>
+
+				<label class="form-control w-full">
+					<span class="label-text mb-1 text-xs font-medium text-base-content/70">Status</span>
+					<select
+						class="select select-bordered w-full"
+						[value]="selectedStatusFilter"
+						(change)="updateStatusFilter($event)"
+					>
+						@for (option of statusFilterOptions; track option.value) {
+							<option [value]="option.value">{{ option.label }}</option>
+						}
+					</select>
+				</label>
+
+				<label class="form-control w-full">
+					<span class="label-text mb-1 text-xs font-medium text-base-content/70">Language</span>
+					<select
+						class="select select-bordered w-full"
+						[value]="selectedLanguageFilter"
+						(change)="updateLanguageFilter($event)"
+					>
+						@for (option of languageFilterOptions; track option.value) {
+							<option [value]="option.value">{{ option.label }}</option>
+						}
+					</select>
+				</label>
+
+				<div class="flex items-end">
+					<button
+						type="button"
+						class="btn btn-outline w-full border-base-300"
+						(click)="resetListFilters()"
+						[disabled]="!hasActiveListFilters"
+					>
+						Reset
+					</button>
+				</div>
+			</div>
 
 			@if (isLoading) {
 				<div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -84,9 +134,17 @@
 						When an interviewer assigns you a room, it will appear here with a Join Room action.
 					</p>
 				</article>
+			} @else if (filteredInterviewsCount === 0) {
+				<article class="rounded-2xl border border-dashed border-base-300 bg-base-200/30 p-10 text-center">
+					<h3 class="text-lg font-semibold text-base-content">No matching interviews</h3>
+					<p class="mt-2 text-sm text-base-content/70">
+						Try adjusting search or filters to find your session.
+					</p>
+					<button type="button" class="btn btn-outline mt-4" (click)="resetListFilters()">Clear filters</button>
+				</article>
 			} @else {
 				<div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-					@for (interview of interviews; track getInterviewId(interview)) {
+					@for (interview of pagedInterviews; track getInterviewId(interview)) {
 						<article
 							class="home-card group rounded-2xl border border-base-300 bg-base-100 p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"
 						>
@@ -131,10 +189,11 @@
 									<button
 										type="button"
 										class="btn btn-primary btn-sm transition-all duration-300 hover:shadow-xl"
-										[disabled]="!getInterviewId(interview) || deletingInterviewId === getInterviewId(interview)"
+										[disabled]="!getInterviewId(interview) || deletingInterviewId === getInterviewId(interview) || !canJoinInterview(interview)"
+										[title]="getJoinDisabledReason(interview)"
 										(click)="joinRoom(interview)"
 									>
-										Join room
+										{{ getJoinButtonLabel(interview) }}
 									</button>
 
 									@if (canDeleteInterview(interview)) {
@@ -155,7 +214,80 @@
 						</article>
 					}
 				</div>
+
+				<div class="mt-6 flex flex-col items-center justify-between gap-3 md:flex-row">
+					<p class="text-sm text-base-content/70">Page {{ currentPage }} of {{ totalPages }}</p>
+
+					<div class="join">
+						<button
+							type="button"
+							class="join-item btn btn-sm"
+							(click)="goToPreviousPage()"
+							[disabled]="currentPage === 1"
+						>
+							Prev
+						</button>
+
+						@for (page of pageNumbers; track page) {
+							<button
+								type="button"
+								class="join-item btn btn-sm"
+								[class.btn-active]="currentPage === page"
+								(click)="goToPage(page)"
+							>
+								{{ page }}
+							</button>
+						}
+
+						<button
+							type="button"
+							class="join-item btn btn-sm"
+							(click)="goToNextPage()"
+							[disabled]="currentPage === totalPages"
+						>
+							Next
+						</button>
+					</div>
+				</div>
 			}
 		</section>
 	</div>
 </div>
+
+<dialog #deleteInterviewModal id="home_delete_interview_modal" class="modal">
+	<div class="modal-box max-w-md rounded-2xl border border-base-300">
+		<h3 class="text-lg font-semibold">Delete interview room?</h3>
+		<p class="mt-2 text-sm text-base-content/70">
+			This will permanently delete
+			<span class="font-semibold text-base-content">{{ getPendingDeleteTitle() }}</span>
+			and remove it for all participants.
+		</p>
+
+		<div class="modal-action">
+			<button
+				type="button"
+				class="btn btn-error"
+				(click)="confirmDeleteInterview()"
+				[disabled]="!pendingDeleteInterview || deletingInterviewId === getInterviewId(pendingDeleteInterview)"
+			>
+				@if (deletingInterviewId === getInterviewId(pendingDeleteInterview)) {
+					<span class="loading loading-spinner loading-xs"></span>
+				}
+				Delete room
+			</button>
+
+			<button
+				type="button"
+				class="btn btn-ghost"
+				(click)="closeDeleteInterviewModal()"
+				[disabled]="deletingInterviewId === getInterviewId(pendingDeleteInterview)"
+			>
+				Cancel
+			</button>
+		</div>
+	</div>
+
+	<form method="dialog" class="modal-backdrop">
+		<button type="submit" (click)="closeDeleteInterviewModal()">close</button>
+	</form>
+</dialog>
