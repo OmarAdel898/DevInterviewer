@@ -230,7 +230,18 @@ export class InterviewRoom implements OnInit, OnDestroy {
         next: (res) => {
           this.applyInterviewData(res?.data || {});
         },
-        error: () => this.saveState.set('error'),
+        error: (err) => {
+          this.saveState.set('error');
+          this.statusError.set(this.extractErrorMessage(err, 'Unable to access this interview room.'));
+
+          const maybeStatus = (err as { status?: number })?.status;
+          if (maybeStatus === 403 || maybeStatus === 404) {
+            this.output.set('Access denied. You are not assigned to this interview room. Redirecting...');
+            this.redirectTimer = setTimeout(() => {
+              this.router.navigate(['/my-interviews']);
+            }, 1500);
+          }
+        },
       });
   }
 

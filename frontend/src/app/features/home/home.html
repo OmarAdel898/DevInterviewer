@@ -43,6 +43,47 @@
 			</article>
 		</section>
 
+		<section class="rounded-3xl border border-base-300 bg-base-100 p-6 shadow-xl">
+			<div class="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+				<div>
+					<h2 class="text-xl font-semibold text-base-content">Quick Join by Interview ID</h2>
+					<p class="mt-1 text-sm text-base-content/70">
+						Paste an interview ID to enter your room directly. Access is only allowed for your assigned rooms.
+					</p>
+				</div>
+
+				<div class="w-full md:max-w-2xl">
+					<div class="join w-full">
+						<input
+							type="text"
+							class="input input-bordered join-item w-full"
+							[value]="quickJoinInterviewId"
+							(input)="updateQuickJoinInterviewId($event)"
+							(keyup.enter)="joinRoomById()"
+							placeholder="Paste interview ID"
+						/>
+						<button
+							type="button"
+							class="btn btn-primary join-item"
+							(click)="joinRoomById()"
+							[disabled]="isQuickJoinLoading"
+						>
+							@if (isQuickJoinLoading) {
+								<span class="loading loading-spinner loading-xs"></span>
+							}
+							Join room
+						</button>
+					</div>
+				</div>
+			</div>
+
+			@if (quickJoinErrorMessage) {
+				<div class="alert alert-error mt-4 py-2 text-sm">
+					<span>{{ quickJoinErrorMessage }}</span>
+				</div>
+			}
+		</section>
+
 		<section class="rounded-3xl border border-base-300 bg-base-100 p-8 shadow-xl">
 			<div class="mb-6 flex flex-wrap items-center justify-between gap-3">
 				<h2 class="text-xl font-semibold text-base-content">Assigned Interview Rooms</h2>

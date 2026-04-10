@@ -49,6 +49,9 @@ export class Home implements OnInit {
   protected deleteSuccessMessage: string | null = null;
   protected deletingInterviewId: string | null = null;
   protected pendingDeleteInterview: InterviewItem | null = null;
+  protected quickJoinInterviewId = '';
+  protected isQuickJoinLoading = false;
+  protected quickJoinErrorMessage: string | null = null;
   protected readonly pageSize = 10;
   protected currentPage = 1;
   protected searchQuery = '';
@@ -255,12 +258,12 @@ export class Home implements OnInit {
   }
 
   protected canJoinInterview(interview: InterviewItem): boolean {
-    return interview.status === 'in-progress';
+    return interview.status !== 'completed';
   }
 
   protected getJoinButtonLabel(interview: InterviewItem): string {
     if (interview.status === 'pending') {
-      return 'Waiting start';
+      return 'Open room';
     }
 
     if (interview.status === 'completed') {
@@ -271,15 +274,56 @@ export class Home implements OnInit {
   }
 
   protected getJoinDisabledReason(interview: InterviewItem): string {
-    if (interview.status === 'pending') {
-      return 'Interviewer has not started this interview yet.';
-    }
-
     if (interview.status === 'completed') {
       return 'This interview has already ended.';
     }
 
     return '';
+  }
+
+  protected updateQuickJoinInterviewId(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.quickJoinInterviewId = input.value;
+    this.quickJoinErrorMessage = null;
+  }
+
+  protected joinRoomById(): void {
+    const interviewId = this.quickJoinInterviewId.trim();
+
+    if (!interviewId) {
+      this.quickJoinErrorMessage = 'Please paste an interview ID first.';
+      return;
+    }
+
+    this.isQuickJoinLoading = true;
+    this.quickJoinErrorMessage = null;
+
+    this.interviewService.getInterviewById(interviewId).subscribe({
+      next: (res: any) => {
+        const interview = (res?.data || {}) as InterviewItem;
+        const status = String(interview.status || '').toLowerCase();
+
+        this.isQuickJoinLoading = false;
+
+        if (status === 'completed') {
+          this.quickJoinErrorMessage = 'This interview has already ended.';
+          return;
+        }
+
+        this.router.navigate(['/interview', interviewId]);
+      },
+      error: (err) => {
+        this.isQuickJoinLoading = false;
+        const maybeStatus = (err as { status?: number })?.status;
+
+        if (maybeStatus === 403 || maybeStatus === 404) {
+          this.quickJoinErrorMessage = 'You are not assigned to this room, or the interview ID is invalid.';
+          return;
+        }
+
+        this.quickJoinErrorMessage = this.extractErrorMessage(err, 'Could not join this room right now.');
+      }
+    });
   }
 
   protected canDeleteInterview(interview: InterviewItem): boolean {
