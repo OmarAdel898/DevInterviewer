@@ -1,63 +1,161 @@
-# 🚀 DevInterviewer: Real-Time Collaborative Interview Platform
+# DevInterviewer
 
-**DevInterviewer** is a high-performance, full-stack technical recruitment platform designed to facilitate seamless live coding interviews. It combines a synchronized professional code editor with integrated **Real-Time Video Conferencing**, enabling interviewers and candidates to collaborate as if they were in the same room.
+Real-time coding interview platform built with Angular, Node.js, Express, MongoDB, and Socket.io.
 
----
+## Current Project State (Implemented)
 
-## ✨ Core Features
+This README reflects what is currently working in the project today.
 
-* **📹 Live Video & Audio:** Integrated Peer-to-Peer (P2P) communication using **WebRTC**, allowing for low-latency face-to-face technical discussions.
-* **💻 Synchronized Code Workspace:** A shared **Monaco Editor** (the engine behind VS Code) where both parties see code changes in real-time.
-* **⚡ Bi-Directional Sync:** Powered by **Socket.io** for instant signaling, room management, and code synchronization.
-* **📊 Smart Dashboard:** A clean management interface to schedule interviews, manage candidate profiles, and review past session notes.
-* **🎨 SaaS-Level UI/UX:** A modern, minimal interface built with **Angular 21**, **Tailwind CSS**, and **DaisyUI**, featuring dynamic theme support.
-* **🔐 Secure Access:** JWT-based authentication ensures that only authorized interviewers can create and manage "Interview Rooms."
+### Authentication and Roles
 
----
+- JWT-based login and protected routes
+- Roles: `admin`, `interviewer`, `user`
+- Refresh token endpoint
+- Profile update endpoint (`fullName`)
 
-## 🛠️ Technical Stack
+### Interview Management
+
+- Create interview with:
+	- title
+	- candidate lookup by email
+	- language
+	- focus
+	- schedule time
+- List interviews by role:
+	- interviewer/admin see owned interviews
+	- user sees assigned interviews
+- Delete interview
+- Search, filter, and pagination in dashboard and user home lists
+
+### Problem Bank and Assignment
+
+- Problem CRUD API for interviewer/admin
+- Dashboard UI for:
+	- creating problems
+	- listing problems
+	- deleting problems
+- Assign multiple problems to an interview
+- Remove assigned problem from interview
+- Interview details include assigned problems for both owner and candidate
+
+### Interview Room (Real Time)
+
+- Shared code updates through Socket.io
+- Autosave code to backend
+- Run code via backend compiler endpoint
+	- supported languages: `javascript`, `python`
+- Interview lifecycle:
+	- interviewer can start interview
+	- candidate sees waiting state before start
+	- interviewer can end interview
+	- ended interviews lock editor/run and candidate is redirected
+- Presence indicator (participants in room)
+
+### User Home Join Flows
+
+- Join from assigned interview cards
+- Quick Join by interview ID
+	- validates access server-side
+	- blocks unassigned users
+	- blocks completed interviews
+	- pending interviews open room in waiting mode until interviewer starts
+
+### UI
+
+- Angular 21 standalone components
+- Tailwind CSS + DaisyUI
+- Profile page with local theme switching (saved in localStorage)
+
+## Tech Stack
 
 | Layer | Technology |
-| :--- | :--- |
-| **Frontend** | Angular 21 (Signals, Standalone Components, RxJS) |
-| **Real-Time** | Socket.io (Signaling) & PeerJS / WebRTC (Media) |
-| **Backend** | Node.js, Express.js |
-| **Database** | MongoDB (Mongoose ODM) |
-| **Styling** | Tailwind CSS + DaisyUI |
+| --- | --- |
+| Frontend | Angular 21, RxJS, Signals |
+| Styling | Tailwind CSS, DaisyUI |
+| Backend | Node.js, Express 5 |
+| Database | MongoDB, Mongoose |
+| Realtime | Socket.io |
+| Auth | JWT + refresh token cookie |
 
----
+## Project Structure
 
-## 🏗️ System Architecture
+```text
+backend/
+	controllers/
+	middlewares/
+	models/
+	routes/
+	sockets/
+	validators/
+	docs/
+frontend/
+	src/app/
+		core/
+		features/
+		shared/
+```
 
-The project follows a modern, decoupled architecture:
+## Run Locally
 
-1.  **Signaling Server:** A Node.js/Socket.io server that handles the "handshake" between the interviewer and the candidate to establish a connection.
-2.  **Peer-to-Peer Stream:** Once the handshake is complete, video and audio data travel directly between browsers via WebRTC to ensure maximum speed and privacy.
-3.  **State Management:** **Angular Signals** manage the local UI state (camera toggles, mute status, editor content) for a highly reactive and bug-free experience.
+### Prerequisites
 
----
+- Node.js 18+
+- MongoDB instance (local or cloud)
 
-## 🚀 Getting Started
-
-### 1. Prerequisites
-* Node.js (v18+)
-* MongoDB Atlas account or a local MongoDB instance
-* Angular CLI (`npm install -g @angular/cli`)
-
-### 2. Installation
+### 1) Backend
 
 ```bash
-# Clone the repository
-git clone [https://github.com/OmarAdel898/DevInterviewer.git](https://github.com/OmarAdel898/DevInterviewer.git)
-
-# Setup Backend
 cd backend
 npm install
-# Create a .env file and add:
-# PORT=5000
-# MONGO_URI=your_mongodb_uri
-# JWT_SECRET=your_secret_key
+```
 
-# Setup Frontend
-cd ../frontend
+Create `backend/.env`:
+
+```env
+PORT=3000
+DB_URL=mongodb://127.0.0.1:27017/devinterviewer
+JWT_SECRET=your_jwt_secret
+CLIENT_URL=http://localhost:4200
+```
+
+Run backend:
+
+```bash
+npm run dev
+```
+
+### 2) Frontend
+
+```bash
+cd frontend
 npm install
+npm start
+```
+
+Frontend: `http://localhost:4200`
+
+Backend: `http://127.0.0.1:3000`
+
+Note for Windows PowerShell users: if execution policy blocks npm scripts, use `npm.cmd` instead of `npm`.
+
+## API Reference
+
+Detailed endpoint documentation is available in:
+
+- `backend/docs/API_ENDPOINTS.md`
+
+## Not Implemented Yet (Intentionally Out of Scope for Now)
+
+The following were planned earlier but are not currently implemented:
+
+- WebRTC video/audio interview calls
+- Monaco editor integration
+- PeerJS media signaling pipeline
+- Advanced scorecards and interview analytics
+- AI-generated feedback workflow in UI
+
+## Development Notes
+
+- Backend tests are not set up yet.
+- Frontend includes Angular test tooling (`ng test`).
+- Temporary code execution files are created under `backend/temp/` and cleaned after run.
